@@ -537,7 +537,7 @@ function gameLoop() {
     if (bossDefeated && player.x + player.width > levelEnd.x) {
         gameRunning = false;
         currentLevel++; // Increment level for next game
-        showMessage("Level " + (currentLevel-1) + " Complete! Score: " + score);
+        showMessage("Level Complete! Score: " + score);
     }
     
     // Check if player is alive
@@ -547,7 +547,7 @@ function gameLoop() {
         
         if (lives <= 0) {
             gameRunning = false;
-            showMessage("Game Over! Final Score: " + score);
+            showMessage("Game Over! Score: " + score);
         } else {
             resetPlayerAfterDeath();
         }
@@ -1071,26 +1071,27 @@ function showMessage(text) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // Main title - smaller font
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '30px Arial';
+    ctx.font = '24px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 10);
     
-    ctx.font = '20px Arial';
-    ctx.fillText('Press Start to play again', canvas.width / 2, canvas.height / 2 + 40);
+    // Start instruction - smaller and closer
+    ctx.font = '18px Arial';
+    ctx.fillText('Press Start to play', canvas.width / 2, canvas.height / 2 + 20);
     
-    // Add controls info
-    ctx.font = '16px Arial';
-    ctx.fillText('Controls: WASD or Arrow Keys to move, Space/W/Up to jump', canvas.width / 2, canvas.height / 2 + 80);
-    ctx.fillText('Press jump again while in the air to perform a double jump!', canvas.width / 2, canvas.height / 2 + 100);
+    // Controls info - condensed to one line, smaller font
+    ctx.font = '14px Arial';
+    ctx.fillText('Controls: WASD/Arrows to move, Space/W/Up to double jump', canvas.width / 2, canvas.height / 2 + 50);
     
     if (bossDefeated) {
         ctx.fillStyle = '#FFFF00';
-        ctx.fillText('You defeated the Boss! Congratulations!', canvas.width / 2, canvas.height / 2 + 130);
+        ctx.fillText('Boss defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
         
         if (currentLevel > 1) {
             ctx.fillStyle = '#00FF00';
-            ctx.fillText('Next level will be ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster with more enemies!', canvas.width / 2, canvas.height / 2 + 160);
+            ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', canvas.width / 2, canvas.height / 2 + 100);
         }
     }
 }
@@ -1151,7 +1152,7 @@ window.addEventListener('load', () => {
         imagesLoaded++;
         if (imagesLoaded === totalImages) {
             initLevel();
-            showMessage("VOOO's Adventure! Level " + currentLevel + "\nPress Start to play\nUse WASD or Arrow Keys to move\nDefeat the Boss at the end by jumping on its head 5 times!");
+            showMessage("VOOO's Adventure - Level " + currentLevel);
         }
     }
     
