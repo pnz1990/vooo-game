@@ -14,10 +14,12 @@ let gameRunning = false;
 let score = 0;
 let lives = 3;
 let currentLevel = 1;
+let maxLevel = 2; // Maximum available level
 let speedMultiplier = 0.85; // Level 1: 15% slower (0.85)
 let gravity = 0.46 * speedMultiplier; // Base gravity adjusted by speed multiplier
 let keys = {};
 let cameraX = 0;
+let levelSelectionMode = false; // Whether we're in level selection mode
 let bossHits = 0;
 let bossDefeated = false;
 let doubleJumpEnabled = true; // Enable double jump feature
@@ -552,6 +554,7 @@ function initLevel() {
 // Update score display
 function updateScoreDisplay() {
     scoreElement.textContent = `Score: ${score} | Level: ${currentLevel}`;
+    livesElement.textContent = `Lives: ${lives}`;
 }
 
 // Update lives display
@@ -1183,47 +1186,165 @@ function showMessage(text) {
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '24px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 10);
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 50);
     
-    // Start instruction - smaller and closer
-    ctx.font = '18px Arial';
-    ctx.fillText('Press Start to play', canvas.width / 2, canvas.height / 2 + 20);
-    
-    // Controls info - condensed to one line, smaller font
-    ctx.font = '14px Arial';
-    ctx.fillText('Controls: WASD/Arrows to move, Space/W/Up to double jump', canvas.width / 2, canvas.height / 2 + 50);
-    
-    if (bossDefeated) {
-        ctx.fillStyle = '#FFFF00';
-        ctx.fillText('Boss defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
+    if (levelSelectionMode) {
+        // Level selection instructions
+        ctx.font = '18px Arial';
+        ctx.fillText('Select a level:', canvas.width / 2, canvas.height / 2 - 10);
         
-        if (currentLevel > 1) {
-            ctx.fillStyle = '#00FF00';
-            ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', canvas.width / 2, canvas.height / 2 + 100);
+        // Level 1 button
+        ctx.fillStyle = currentLevel === 1 ? '#4CAF50' : '#3498db';
+        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 20, 200, 40);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('Level 1: Beginner', canvas.width / 2, canvas.height / 2 + 45);
+        
+        // Level 2 button
+        ctx.fillStyle = currentLevel === 2 ? '#4CAF50' : '#3498db';
+        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 70, 200, 40);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('Level 2: Lava Challenge', canvas.width / 2, canvas.height / 2 + 95);
+        
+        // Instructions
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('Click on a level to start, or press 1-2 on keyboard', canvas.width / 2, canvas.height / 2 + 130);
+    } else {
+        // Regular game message
+        ctx.font = '18px Arial';
+        ctx.fillText('Press Start to play', canvas.width / 2, canvas.height / 2 + 20);
+        
+        // Controls info - condensed to one line, smaller font
+        ctx.font = '14px Arial';
+        ctx.fillText('Controls: WASD/Arrows to move, Space/W/Up to double jump', canvas.width / 2, canvas.height / 2 + 50);
+        
+        if (bossDefeated) {
+// Handle mouse clicks for level selection
+canvas.addEventListener('click', (e) => {
+    if (levelSelectionMode && !gameRunning) {
+        // Get mouse position relative to canvas
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // Check if clicked on level 1 button
+        if (mouseX >= canvas.width / 2 - 100 && 
+            mouseX <= canvas.width / 2 + 100 && 
+            mouseY >= canvas.height / 2 + 20 && 
+            mouseY <= canvas.height / 2 + 60) {
+            
+            currentLevel = 1;
+            levelSelectionMode = false;
+            initLevel();
+            gameRunning = true;
+            gameLoop();
+        }
+        
+        // Check if clicked on level 2 button
+        if (mouseX >= canvas.width / 2 - 100 && 
+            mouseX <= canvas.width / 2 + 100 && 
+            mouseY >= canvas.height / 2 + 70 && 
+            mouseY <= canvas.height / 2 + 110) {
+            
+            currentLevel = 2;
+            levelSelectionMode = false;
+            initLevel();
+            gameRunning = true;
+            gameLoop();
         }
     }
-    
-    // Level-specific info
-    if (currentLevel === 2) {
-        ctx.fillStyle = '#FF4500';
-        ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', canvas.width / 2, canvas.height / 2 + 120);
+});            ctx.fillStyle = '#FFFF00';
+            ctx.fillText('Boss defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
+            
+            if (currentLevel > 1) {
+                ctx.fillStyle = '#00FF00';
+                ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', canvas.width / 2, canvas.height / 2 + 100);
+            }
+        }
+        
+        // Level-specific info
+        if (currentLevel === 2) {
+            ctx.fillStyle = '#FF4500';
+            ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', canvas.width / 2, canvas.height / 2 + 120);
+        }
     }
+}
 }
 
 // Event listeners
+// Event listeners
 startButton.addEventListener('click', () => {
     if (!gameRunning) {
-        initLevel();
-        gameRunning = true;
-        gameLoop();
+        if (!levelSelectionMode) {
+            // Show level selection
+            levelSelectionMode = true;
+            showMessage("VOOO's Adventure");
+        } else {
+            // Start game with current level
+            levelSelectionMode = false;
+            initLevel();
+            gameRunning = true;
+            gameLoop();
+        }
     }
 });
 
-// Keyboard controls
+// Handle mouse clicks for level selection
+canvas.addEventListener('click', (e) => {
+    if (levelSelectionMode && !gameRunning) {
+        // Get mouse position relative to canvas
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // Check if clicked on level 1 button
+        if (mouseX >= canvas.width / 2 - 100 && 
+            mouseX <= canvas.width / 2 + 100 && 
+            mouseY >= canvas.height / 2 + 20 && 
+            mouseY <= canvas.height / 2 + 60) {
+            
+            currentLevel = 1;
+            levelSelectionMode = false;
+            initLevel();
+            gameRunning = true;
+            gameLoop();
+        }
+        
+        // Check if clicked on level 2 button
+        if (mouseX >= canvas.width / 2 - 100 && 
+            mouseX <= canvas.width / 2 + 100 && 
+            mouseY >= canvas.height / 2 + 70 && 
+            mouseY <= canvas.height / 2 + 110) {
+            
+            currentLevel = 2;
+            levelSelectionMode = false;
+            initLevel();
+            gameRunning = true;
+            gameLoop();
+        }
+    }
+});// Keyboard controls
 window.addEventListener('keydown', (e) => {
     // Only register key press if it wasn't already pressed (prevents holding key to spam jump)
     if (!keys[e.code]) {
         keys[e.code] = true;
+        
+        // Level selection with number keys
+        if (levelSelectionMode && !gameRunning) {
+            if (e.code === 'Digit1' || e.code === 'Numpad1') {
+                currentLevel = 1;
+                levelSelectionMode = false;
+                initLevel();
+                gameRunning = true;
+                gameLoop();
+            } else if (e.code === 'Digit2' || e.code === 'Numpad2') {
+                currentLevel = 2;
+                levelSelectionMode = false;
+                initLevel();
+                gameRunning = true;
+                gameLoop();
+            }
+        }
         
         // Handle jump key press
         if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && gameRunning) {
@@ -1266,7 +1387,8 @@ window.addEventListener('load', () => {
         imagesLoaded++;
         if (imagesLoaded === totalImages) {
             initLevel();
-            showMessage("VOOO's Adventure - Level " + currentLevel);
+            levelSelectionMode = true;
+            showMessage("VOOO's Adventure");
         }
     }
     
