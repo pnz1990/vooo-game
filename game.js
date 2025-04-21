@@ -436,7 +436,7 @@ function initLevel() {
     // Add enemies - number based on level
     enemies = [];
     // Fewer enemies in level 1, more in higher levels
-    const enemyCount = currentLevel === 1 ? 15 : 30;
+    const enemyCount = currentLevel === 1 ? 8 : 30;
     
     for (let i = 0; i < enemyCount; i++) {
         const enemyX = 600 + i * 250 + Math.random() * 100;
@@ -457,7 +457,7 @@ function initLevel() {
     }
     
     // Add some enemies on platforms - fewer in level 1
-    const platformEnemyChance = currentLevel === 1 ? 0.2 : 0.4;
+    const platformEnemyChance = currentLevel === 1 ? 0.1 : 0.4;
     
     platforms.forEach((platform, index) => {
         if (index > 0 && platform.width > 80 && Math.random() > (1 - platformEnemyChance) && platform.x < 7500) {
