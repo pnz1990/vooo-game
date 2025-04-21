@@ -14,6 +14,7 @@ let gameRunning = false;
 let score = 0;
 let lives = 3;
 let currentLevel = 1;
+let maxUnlockedLevel = 2; // Maximum level that has been unlocked
 let speedMultiplier = 0.85; // Level 1: 15% slower (0.85)
 let gravity = 0.46 * speedMultiplier; // Base gravity adjusted by speed multiplier
 let keys = {};
@@ -22,6 +23,7 @@ let bossHits = 0;
 let bossDefeated = false;
 let doubleJumpEnabled = true; // Enable double jump feature
 let debugMode = false; // Disable debug information
+let showingLevelSelect = false; // Whether level select is currently showing
 
 // Game assets
 const assets = {
@@ -604,6 +606,12 @@ function gameLoop() {
     // Check for level completion
     if (bossDefeated && player.x + player.width > levelEnd.x) {
         gameRunning = false;
+        
+        // Unlock next level if this is a new achievement
+        if (currentLevel >= maxUnlockedLevel) {
+            maxUnlockedLevel = currentLevel + 1;
+        }
+        
         currentLevel++; // Increment level for next game
         showMessage("Level Complete! Score: " + score);
     }
@@ -1183,11 +1191,13 @@ function showMessage(text) {
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '24px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 10);
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 50);
     
-    // Start instruction - smaller and closer
-    ctx.font = '18px Arial';
-    ctx.fillText('Press Start to play', canvas.width / 2, canvas.height / 2 + 20);
+    // If not in level select mode, show start button instruction
+    if (!showingLevelSelect) {
+        ctx.font = '18px Arial';
+        ctx.fillText('Press Start to select level', canvas.width / 2, canvas.height / 2 - 10);
+    }
     
     // Controls info - condensed to one line, smaller font
     ctx.font = '14px Arial';
@@ -1208,11 +1218,56 @@ function showMessage(text) {
         ctx.fillStyle = '#FF4500';
         ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', canvas.width / 2, canvas.height / 2 + 120);
     }
+    
+    // Show level selection if in that mode
+    if (showingLevelSelect) {
+        // Draw level selection text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '20px Arial';
+        ctx.fillText('Select a level:', canvas.width / 2, canvas.height / 2);
+        
+        // Make sure the level buttons are visible
+        document.getElementById('levelSelector').classList.remove('hidden');
+    } else {
+        // Hide level buttons when not in selection mode
+        document.getElementById('levelSelector').classList.add('hidden');
+    }
+}
 }
 
 // Event listeners
 startButton.addEventListener('click', () => {
     if (!gameRunning) {
+        if (!showingLevelSelect) {
+            // Show level selection
+            showingLevelSelect = true;
+            showMessage("VOOO's Adventure");
+        } else {
+            // Default to level 1 if they press start again while in level select
+            currentLevel = 1;
+            showingLevelSelect = false;
+            initLevel();
+            gameRunning = true;
+            gameLoop();
+        }
+    }
+});
+
+// Level selection buttons
+document.getElementById('level1').addEventListener('click', () => {
+    if (showingLevelSelect) {
+        currentLevel = 1;
+        showingLevelSelect = false;
+        initLevel();
+        gameRunning = true;
+        gameLoop();
+    }
+});
+
+document.getElementById('level2').addEventListener('click', () => {
+    if (showingLevelSelect && maxUnlockedLevel >= 2) {
+        currentLevel = 2;
+        showingLevelSelect = false;
         initLevel();
         gameRunning = true;
         gameLoop();
@@ -1266,7 +1321,11 @@ window.addEventListener('load', () => {
         imagesLoaded++;
         if (imagesLoaded === totalImages) {
             initLevel();
-            showMessage("VOOO's Adventure - Level " + currentLevel);
+            showingLevelSelect = true; // Start with level selection screen
+            showMessage("VOOO's Adventure");
+            
+            // Update level button states
+            updateLevelButtons();
         }
     }
     
@@ -1296,6 +1355,34 @@ window.addEventListener('load', () => {
         checkAllImagesLoaded();
     };
 });
+
+// Update level button states based on unlocked levels
+function updateLevelButtons() {
+    const level1Button = document.getElementById('level1');
+    const level2Button = document.getElementById('level2');
+    
+    // Level 1 is always available
+    level1Button.disabled = false;
+    level1Button.textContent = "Level 1: Beginner";
+    
+    // Level 2 availability depends on maxUnlockedLevel
+    if (maxUnlockedLevel >= 2) {
+        level2Button.disabled = false;
+        level2Button.textContent = "Level 2: Lava Challenge";
+    } else {
+        level2Button.disabled = true;
+        level2Button.textContent = "Level 2: Locked";
+    }
+    
+    // Highlight the current level
+    if (currentLevel === 1) {
+        level1Button.classList.add('active');
+        level2Button.classList.remove('active');
+    } else if (currentLevel === 2) {
+        level1Button.classList.remove('active');
+        level2Button.classList.add('active');
+    }
+}
 // Create double jump effect
 function createDoubleJumpEffect() {
     // Create particles for double jump effect
