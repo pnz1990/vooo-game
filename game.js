@@ -13,7 +13,9 @@ canvas.height = 500;
 let gameRunning = false;
 let score = 0;
 let lives = 3;
-let gravity = 0.46; // Adjusted gravity (15% faster than 0.4)
+let currentLevel = 1;
+let speedMultiplier = 0.85; // Level 1: 15% slower (0.85)
+let gravity = 0.46 * speedMultiplier; // Base gravity adjusted by speed multiplier
 let keys = {};
 let cameraX = 0;
 let bossHits = 0;
@@ -34,7 +36,7 @@ const assets = {
         currentFrame: 0,
         frameCount: 0,
         frameDelay: 8,
-        speed: 3.45, // 15% faster than 3
+        speed: 3.45 * speedMultiplier, // Base speed adjusted by speed multiplier
         facingRight: true,
         isJumping: false
     },
@@ -85,11 +87,11 @@ const player = {
     jumping: false,
     velocityX: 0,
     velocityY: 0,
-    jumpPower: -11.5, // 15% faster than -10
+    jumpPower: -11.5 * speedMultiplier, // Base jump power adjusted by speed multiplier
     isAlive: true,
     invulnerable: false,
     invulnerableTimer: 0,
-    moveSpeed: 3.45 // 15% faster than 3
+    moveSpeed: 3.45 * speedMultiplier // Base move speed adjusted by speed multiplier
 };
 
 // Boss object
@@ -98,13 +100,13 @@ const boss = {
     y: 0,
     width: assets.boss.width,
     height: assets.boss.height,
-    velocityX: 1.725, // 15% faster than 1.5
+    velocityX: 1.725 * speedMultiplier, // Base velocity adjusted by speed multiplier
     velocityY: 0,
     active: true,
     hits: 0,
     invulnerable: false,
     invulnerableTimer: 0,
-    jumpPower: -6.9 // 15% faster than -6
+    jumpPower: -6.9 * speedMultiplier // Base jump power adjusted by speed multiplier
 };
 
 // Game objects
@@ -327,6 +329,19 @@ function initLevel() {
     bossHits = 0;
     bossDefeated = false;
     
+    // Set speed multiplier based on current level
+    // Level 1: 15% slower (0.85)
+    // Future levels will be faster
+    speedMultiplier = currentLevel === 1 ? 0.85 : 1 + ((currentLevel - 2) * 0.1);
+    
+    // Update speed-dependent variables
+    gravity = 0.46 * speedMultiplier;
+    player.moveSpeed = 3.45 * speedMultiplier;
+    player.jumpPower = -11.5 * speedMultiplier;
+    boss.velocityX = 1.725 * speedMultiplier;
+    boss.jumpPower = -6.9 * speedMultiplier;
+    assets.vooo.speed = 3.45 * speedMultiplier;
+    
     // Reset player
     player.x = 100;
     player.y = 0;
@@ -424,7 +439,7 @@ function initLevel() {
                 y: enemyY,
                 width: assets.strawberry.width,
                 height: assets.strawberry.height,
-                velocityX: Math.random() > 0.5 ? -1.5 : 1.5, // Random direction
+                velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier, // Random direction adjusted by speed multiplier
                 active: true
             });
         }
@@ -439,7 +454,7 @@ function initLevel() {
                 y: platform.y - assets.strawberry.height,
                 width: assets.strawberry.width,
                 height: assets.strawberry.height,
-                velocityX: Math.random() > 0.5 ? -1.5 : 1.5, // Move left or right
+                velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier, // Move left or right, adjusted by speed multiplier
                 platformIndex: index,
                 active: true
             });
@@ -455,7 +470,7 @@ function initLevel() {
 
 // Update score display
 function updateScoreDisplay() {
-    scoreElement.textContent = `Score: ${score}`;
+    scoreElement.textContent = `Score: ${score} | Level: ${currentLevel}`;
 }
 
 // Update lives display
@@ -508,7 +523,8 @@ function gameLoop() {
     // Check for level completion
     if (bossDefeated && player.x + player.width > levelEnd.x) {
         gameRunning = false;
-        showMessage("Level Complete! Score: " + score);
+        currentLevel++; // Increment level for next game
+        showMessage("Level " + (currentLevel-1) + " Complete! Score: " + score);
     }
     
     // Check if player is alive
@@ -1031,6 +1047,11 @@ function showMessage(text) {
     if (bossDefeated) {
         ctx.fillStyle = '#FFFF00';
         ctx.fillText('You defeated the Boss! Congratulations!', canvas.width / 2, canvas.height / 2 + 120);
+        
+        if (currentLevel > 1) {
+            ctx.fillStyle = '#00FF00';
+            ctx.fillText('Next level will be ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster!', canvas.width / 2, canvas.height / 2 + 150);
+        }
     }
 }
 
@@ -1073,7 +1094,7 @@ window.addEventListener('load', () => {
         imagesLoaded++;
         if (imagesLoaded === totalImages) {
             initLevel();
-            showMessage("VOOO's Adventure! Press Start to play\nUse WASD or Arrow Keys to move\nDefeat the Boss at the end by jumping on its head 5 times!");
+            showMessage("VOOO's Adventure! Level " + currentLevel + "\nPress Start to play\nUse WASD or Arrow Keys to move\nDefeat the Boss at the end by jumping on its head 5 times!");
         }
     }
     
