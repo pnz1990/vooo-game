@@ -58,7 +58,7 @@ const assets = {
     lava: {
         color: '#FF4500', // Bright orange-red
         glowColor: '#FFFF00', // Yellow glow
-        animationSpeed: 0.2
+        animationSpeed: 0.003 // Slowed down for smoother animation
     },
     boss: {
         img: null,
@@ -408,9 +408,9 @@ function initLevel() {
                 // Add lava obstacle
                 obstacles.push({
                     x: currentX + segmentLength,
-                    y: canvas.height - 20,
+                    y: canvas.height - 20, // Position lava at the bottom of the screen
                     width: gapLength,
-                    height: 20,
+                    height: 40, // Match the height of the ground platforms
                     type: 'lava'
                 });
                 
@@ -701,7 +701,8 @@ function updatePlayer() {
             player.x < obstacle.x + obstacle.width
         ) {
             // Handle lava collision - instant death
-            if (obstacle.type === 'lava') {
+            if (obstacle.type === 'lava' && 
+                player.y + player.height > obstacle.y - 5) { // Adjusted collision detection for lava
                 player.isAlive = false;
                 return;
             }
@@ -945,7 +946,7 @@ function drawObstacles() {
             
             // Create lava gradient
             const lavaGradient = ctx.createLinearGradient(
-                screenX, obstacle.y, 
+                screenX, obstacle.y - 10, // Start gradient above the lava surface
                 screenX, obstacle.y + obstacle.height
             );
             
@@ -954,13 +955,19 @@ function drawObstacles() {
             lavaGradient.addColorStop(1, '#990000');
             
             ctx.fillStyle = lavaGradient;
-            ctx.fillRect(screenX, obstacle.y, obstacle.width, obstacle.height);
+            ctx.fillRect(screenX, obstacle.y - 10, obstacle.width, obstacle.height + 10); // Extend lava upward for better visibility
+            
+            // Add glow effect around lava
+            ctx.shadowColor = assets.lava.glowColor;
+            ctx.shadowBlur = 15;
+            ctx.fillRect(screenX, obstacle.y - 15, obstacle.width, 5);
+            ctx.shadowBlur = 0;
             
             // Add bubbling effect
             for (let i = 0; i < obstacle.width / 10; i++) {
                 const bubbleX = screenX + i * 10 + Math.sin(time + i) * 5;
-                const bubbleY = obstacle.y + Math.sin(time * 2 + i * 0.7) * 5;
-                const bubbleSize = 2 + Math.sin(time * 3 + i * 1.5) * 2;
+                const bubbleY = obstacle.y + Math.sin(time * 2 + i * 0.7) * 8; // Increased amplitude
+                const bubbleSize = 2 + Math.sin(time * 3 + i * 1.5) * 3; // Larger bubbles
                 
                 ctx.fillStyle = assets.lava.glowColor;
                 ctx.beginPath();
