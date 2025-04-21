@@ -53,6 +53,11 @@ const assets = {
         frameCount: 0,
         frameDelay: 15
     },
+    lava: {
+        color: '#FF4500', // Bright orange-red
+        glowColor: '#FFFF00', // Yellow glow
+        animationSpeed: 0.2
+    },
     boss: {
         img: null,
         width: 100,
@@ -336,7 +341,7 @@ function initLevel() {
     
     // Set speed multiplier based on current level
     // Level 1: 15% slower (0.85)
-    // Future levels will be faster
+    // Level 2+: Progressively faster
     speedMultiplier = currentLevel === 1 ? 0.85 : 1 + ((currentLevel - 2) * 0.1);
     
     // Update speed-dependent variables
@@ -370,10 +375,59 @@ function initLevel() {
     boss.invulnerable = false;
     boss.invulnerableTimer = 0;
     
-    // Create ground platform
-    platforms = [
-        { x: 0, y: canvas.height - 40, width: 8000, height: 40, type: 'ground' }
-    ];
+    // Create ground platform with gaps for lava in level 2+
+    if (currentLevel === 1) {
+        // Level 1: Continuous ground
+        platforms = [
+            { x: 0, y: canvas.height - 40, width: 8000, height: 40, type: 'ground' }
+        ];
+    } else {
+        // Level 2+: Ground with lava gaps
+        platforms = [];
+        let currentX = 0;
+        
+        while (currentX < 8000) {
+            // Determine segment length
+            let segmentLength;
+            
+            if (currentX < 500) {
+                // Safe starting area
+                segmentLength = 500;
+            } else if (currentX > 7500) {
+                // Safe boss area
+                segmentLength = 8000 - currentX;
+            } else {
+                // Random segment length between 200-500
+                segmentLength = Math.random() * 300 + 200;
+                
+                // Add lava gap after this segment
+                const gapLength = Math.random() * 100 + 80;
+                
+                // Add lava obstacle
+                obstacles.push({
+                    x: currentX + segmentLength,
+                    y: canvas.height - 20,
+                    width: gapLength,
+                    height: 20,
+                    type: 'lava'
+                });
+                
+                // Skip the gap for next ground segment
+                currentX += gapLength;
+            }
+            
+            // Add ground segment
+            platforms.push({
+                x: currentX,
+                y: canvas.height - 40,
+                width: segmentLength,
+                height: 40,
+                type: 'ground'
+            });
+            
+            currentX += segmentLength;
+        }
+    }
     
     // Add platforms - more of them and more varied
     for (let i = 0; i < 40; i++) {
@@ -415,8 +469,11 @@ function initLevel() {
     });
     
     // Add obstacles
-    obstacles = [];
-    for (let i = 0; i < 25; i++) {
+    if (!obstacles) obstacles = [];
+    
+    // Add regular obstacles (rocks, etc.)
+    const obstacleCount = currentLevel === 1 ? 25 : 30; // More obstacles in level 2+
+    for (let i = 0; i < obstacleCount; i++) {
         const obstacleWidth = Math.random() * 60 + 40;
         const obstacleHeight = Math.random() * 80 + 40;
         const obstacleX = 800 + i * 300 + Math.random() * 200;
@@ -428,7 +485,8 @@ function initLevel() {
                 x: obstacleX,
                 y: obstacleY,
                 width: obstacleWidth,
-                height: obstacleHeight
+                height: obstacleHeight,
+                type: 'rock'
             });
         }
     }
@@ -436,7 +494,17 @@ function initLevel() {
     // Add enemies - number based on level
     enemies = [];
     // Fewer enemies in level 1, more in higher levels
-    const enemyCount = currentLevel === 1 ? 8 : 30;
+    // Level 2 has 10% more enemies than the base amount
+    const baseEnemyCount = 30;
+    let enemyCount;
+    
+    if (currentLevel === 1) {
+        enemyCount = 8; // Level 1: Few enemies
+    } else if (currentLevel === 2) {
+        enemyCount = Math.floor(baseEnemyCount * 1.1); // Level 2: 10% more than base
+    } else {
+        enemyCount = Math.floor(baseEnemyCount * (1 + (currentLevel - 2) * 0.15)); // Higher levels: Even more
+    }
     
     for (let i = 0; i < enemyCount; i++) {
         const enemyX = 600 + i * 250 + Math.random() * 100;
@@ -629,6 +697,12 @@ function updatePlayer() {
             player.x + player.width > obstacle.x &&
             player.x < obstacle.x + obstacle.width
         ) {
+            // Handle lava collision - instant death
+            if (obstacle.type === 'lava') {
+                player.isAlive = false;
+                return;
+            }
+            
             // Collision from above
             if (player.velocityY > 0 && player.y + player.height - player.velocityY <= obstacle.y) {
                 player.y = obstacle.y - player.height;
@@ -862,15 +936,49 @@ function drawObstacles() {
         // Skip if off-screen
         if (screenX + obstacle.width < 0 || screenX > canvas.width) return;
         
-        // Draw obstacle with tiles
-        for (let x = 0; x < obstacle.width; x += assets.tiles.size) {
-            for (let y = 0; y < obstacle.height; y += assets.tiles.size) {
-                ctx.drawImage(
-                    assets.tiles.img,
-                    assets.tiles.size * 2, 0, assets.tiles.size, assets.tiles.size,
-                    screenX + x, obstacle.y + y, 
-                    assets.tiles.size, assets.tiles.size
-                );
+        if (obstacle.type === 'lava') {
+            // Draw lava with animation effect
+            const time = Date.now() * assets.lava.animationSpeed;
+            
+            // Create lava gradient
+            const lavaGradient = ctx.createLinearGradient(
+                screenX, obstacle.y, 
+                screenX, obstacle.y + obstacle.height
+            );
+            
+            lavaGradient.addColorStop(0, assets.lava.glowColor);
+            lavaGradient.addColorStop(0.3 + Math.sin(time) * 0.2, assets.lava.color);
+            lavaGradient.addColorStop(1, '#990000');
+            
+            ctx.fillStyle = lavaGradient;
+            ctx.fillRect(screenX, obstacle.y, obstacle.width, obstacle.height);
+            
+            // Add bubbling effect
+            for (let i = 0; i < obstacle.width / 10; i++) {
+                const bubbleX = screenX + i * 10 + Math.sin(time + i) * 5;
+                const bubbleY = obstacle.y + Math.sin(time * 2 + i * 0.7) * 5;
+                const bubbleSize = 2 + Math.sin(time * 3 + i * 1.5) * 2;
+                
+                ctx.fillStyle = assets.lava.glowColor;
+                ctx.beginPath();
+                ctx.arc(bubbleX, bubbleY, bubbleSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Add glow effect
+            ctx.fillStyle = 'rgba(255, 69, 0, 0.3)';
+            ctx.fillRect(screenX - 5, obstacle.y - 5, obstacle.width + 10, obstacle.height + 5);
+        } else {
+            // Draw regular obstacle with tiles
+            for (let x = 0; x < obstacle.width; x += assets.tiles.size) {
+                for (let y = 0; y < obstacle.height; y += assets.tiles.size) {
+                    ctx.drawImage(
+                        assets.tiles.img,
+                        assets.tiles.size * 2, 0, assets.tiles.size, assets.tiles.size,
+                        screenX + x, obstacle.y + y, 
+                        assets.tiles.size, assets.tiles.size
+                    );
+                }
             }
         }
     });
@@ -1093,6 +1201,12 @@ function showMessage(text) {
             ctx.fillStyle = '#00FF00';
             ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', canvas.width / 2, canvas.height / 2 + 100);
         }
+    }
+    
+    // Level-specific info
+    if (currentLevel === 2) {
+        ctx.fillStyle = '#FF4500';
+        ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', canvas.width / 2, canvas.height / 2 + 120);
     }
 }
 
