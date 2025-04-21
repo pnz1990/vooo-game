@@ -25,6 +25,13 @@
    - Level 1 has fewer platform-based enemies (20% chance vs 40% in higher levels)
    - Higher levels have more enemies for increased difficulty
 
+5. **Double Jump Ability**:
+   - Player can now perform a second jump while in the air
+   - Double jump has a stronger jump power (-13 vs -11.5 for regular jump)
+   - Visual indicator shows when double jump is available (white glow)
+   - Particle effect appears when double jump is used
+   - Double jump resets when player lands on a platform
+
 ## How It Works
 
 The game now uses a `speedMultiplier` variable that affects all movement in the game:
@@ -45,6 +52,24 @@ const enemyCount = currentLevel === 1 ? 15 : 30;
 
 // Fewer platform enemies in level 1
 const platformEnemyChance = currentLevel === 1 ? 0.2 : 0.4;
+```
+
+Double jump implementation:
+
+```javascript
+// First jump when on the ground
+if (!player.jumping) {
+    player.velocityY = player.jumpPower;
+    player.jumping = true;
+    player.canDoubleJump = doubleJumpEnabled;
+}
+// Double jump when in the air and double jump is available
+else if (player.canDoubleJump && !player.doubleJumping) {
+    player.velocityY = player.doubleJumpPower;
+    player.doubleJumping = true;
+    player.canDoubleJump = false;
+    createDoubleJumpEffect();
+}
 ```
 
 When a player completes a level, the `currentLevel` variable increments, which will increase the `speedMultiplier` and enemy count for the next game.

@@ -20,6 +20,7 @@ let keys = {};
 let cameraX = 0;
 let bossHits = 0;
 let bossDefeated = false;
+let doubleJumpEnabled = true; // Enable double jump feature
 
 // Game assets
 const assets = {
@@ -85,9 +86,12 @@ const player = {
     width: assets.vooo.width,
     height: assets.vooo.height,
     jumping: false,
+    doubleJumping: false,
+    canDoubleJump: false,
     velocityX: 0,
     velocityY: 0,
     jumpPower: -11.5 * speedMultiplier, // Base jump power adjusted by speed multiplier
+    doubleJumpPower: -13 * speedMultiplier, // Stronger jump for double jump
     isAlive: true,
     invulnerable: false,
     invulnerableTimer: 0,
@@ -338,6 +342,7 @@ function initLevel() {
     gravity = 0.46 * speedMultiplier;
     player.moveSpeed = 3.45 * speedMultiplier;
     player.jumpPower = -11.5 * speedMultiplier;
+    player.doubleJumpPower = -13 * speedMultiplier;
     boss.velocityX = 1.725 * speedMultiplier;
     boss.jumpPower = -6.9 * speedMultiplier;
     assets.vooo.speed = 3.45 * speedMultiplier;
@@ -348,6 +353,8 @@ function initLevel() {
     player.velocityX = 0;
     player.velocityY = 0;
     player.jumping = false;
+    player.doubleJumping = false;
+    player.canDoubleJump = false;
     player.isAlive = true;
     player.invulnerable = false;
     player.invulnerableTimer = 0;
@@ -563,10 +570,24 @@ function updatePlayer() {
         assets.vooo.facingRight = true;
     }
     
-    if ((keys['KeyW'] || keys['ArrowUp'] || keys['Space']) && !player.jumping) {
-        player.velocityY = player.jumpPower;
-        player.jumping = true;
-        assets.vooo.isJumping = true;
+    // Handle jumping and double jumping
+    if ((keys['KeyW'] || keys['ArrowUp'] || keys['Space'])) {
+        // First jump when on the ground
+        if (!player.jumping) {
+            player.velocityY = player.jumpPower;
+            player.jumping = true;
+            player.canDoubleJump = doubleJumpEnabled; // Enable double jump after first jump
+            assets.vooo.isJumping = true;
+        }
+        // Double jump when in the air and double jump is available
+        else if (player.canDoubleJump && !player.doubleJumping) {
+            player.velocityY = player.doubleJumpPower;
+            player.doubleJumping = true;
+            player.canDoubleJump = false;
+            
+            // Visual effect for double jump (particle effect)
+            createDoubleJumpEffect();
+        }
     }
     
     // Apply gravity
@@ -595,6 +616,8 @@ function updatePlayer() {
                 player.y = platform.y - player.height;
                 player.velocityY = 0;
                 player.jumping = false;
+                player.doubleJumping = false;
+                player.canDoubleJump = false; // Reset double jump when landing
                 assets.vooo.isJumping = false;
                 onGround = true;
             }
@@ -922,6 +945,20 @@ function drawPlayer() {
         );
     }
     ctx.restore();
+    
+    // Draw double jump indicator if available
+    if (player.jumping && player.canDoubleJump) {
+        // Draw a subtle glow around the player
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(screenX + player.width/2, player.y + player.height/2, 
+                player.width * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+    }
 }
 
 // Draw enemies
@@ -1027,6 +1064,9 @@ function resetPlayerAfterDeath() {
     player.y = 0;
     player.velocityY = 0;
     player.velocityX = 0;
+    player.jumping = false;
+    player.doubleJumping = false;
+    player.canDoubleJump = false;
     
     // Move player back a bit from where they died
     player.x = Math.max(100, player.x - 200);
@@ -1047,15 +1087,16 @@ function showMessage(text) {
     
     // Add controls info
     ctx.font = '16px Arial';
-    ctx.fillText('Controls: WASD or Arrow Keys to move, Space to jump', canvas.width / 2, canvas.height / 2 + 80);
+    ctx.fillText('Controls: WASD or Arrow Keys to move, Space/W/Up to jump', canvas.width / 2, canvas.height / 2 + 80);
+    ctx.fillText('Press jump again while in the air to perform a double jump!', canvas.width / 2, canvas.height / 2 + 100);
     
     if (bossDefeated) {
         ctx.fillStyle = '#FFFF00';
-        ctx.fillText('You defeated the Boss! Congratulations!', canvas.width / 2, canvas.height / 2 + 120);
+        ctx.fillText('You defeated the Boss! Congratulations!', canvas.width / 2, canvas.height / 2 + 130);
         
         if (currentLevel > 1) {
             ctx.fillStyle = '#00FF00';
-            ctx.fillText('Next level will be ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster with more enemies!', canvas.width / 2, canvas.height / 2 + 150);
+            ctx.fillText('Next level will be ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster with more enemies!', canvas.width / 2, canvas.height / 2 + 160);
         }
     }
 }
@@ -1071,12 +1112,29 @@ startButton.addEventListener('click', () => {
 
 // Keyboard controls
 window.addEventListener('keydown', (e) => {
-    keys[e.code] = true;
-    
-    if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && gameRunning && !player.jumping) {
-        player.velocityY = player.jumpPower;
-        player.jumping = true;
-        assets.vooo.isJumping = true;
+    // Only register key press if it wasn't already pressed (prevents holding key to spam jump)
+    if (!keys[e.code]) {
+        keys[e.code] = true;
+        
+        // Handle jump key press
+        if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && gameRunning) {
+            // First jump
+            if (!player.jumping) {
+                player.velocityY = player.jumpPower;
+                player.jumping = true;
+                player.canDoubleJump = doubleJumpEnabled;
+                assets.vooo.isJumping = true;
+            }
+            // Double jump
+            else if (player.canDoubleJump && !player.doubleJumping) {
+                player.velocityY = player.doubleJumpPower;
+                player.doubleJumping = true;
+                player.canDoubleJump = false;
+                
+                // Visual effect for double jump
+                createDoubleJumpEffect();
+            }
+        }
     }
     
     // Prevent default for arrow keys and space to avoid page scrolling
@@ -1129,3 +1187,68 @@ window.addEventListener('load', () => {
         checkAllImagesLoaded();
     };
 });
+// Create double jump effect
+function createDoubleJumpEffect() {
+    // Create particles for double jump effect
+    const particleCount = 15;
+    const particles = [];
+    
+    for (let i = 0; i < particleCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 3 + 2;
+        const size = Math.random() * 5 + 3;
+        
+        particles.push({
+            x: player.x + player.width / 2,
+            y: player.y + player.height,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: size,
+            color: '#FFFFFF',
+            life: 20
+        });
+    }
+    
+    // Animate particles
+    function animateParticles() {
+        if (particles.length === 0) return;
+        
+        // Update and draw particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            
+            // Update position
+            p.x += p.vx;
+            p.y += p.vy;
+            
+            // Apply gravity
+            p.vy += 0.1;
+            
+            // Decrease life
+            p.life--;
+            
+            // Remove dead particles
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+                continue;
+            }
+            
+            // Draw particle
+            const screenX = p.x - cameraX;
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life / 20;
+            ctx.beginPath();
+            ctx.arc(screenX, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+        
+        // Continue animation if particles remain
+        if (particles.length > 0) {
+            requestAnimationFrame(animateParticles);
+        }
+    }
+    
+    // Start animation
+    animateParticles();
+}
