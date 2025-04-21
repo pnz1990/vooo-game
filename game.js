@@ -1219,6 +1219,22 @@ function showMessage(text) {
         ctx.fillText('Controls: WASD/Arrows to move, Space/W/Up to double jump', canvas.width / 2, canvas.height / 2 + 50);
         
         if (bossDefeated) {
+            ctx.fillStyle = '#FFFF00';
+            ctx.fillText('Boss defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
+            
+            if (currentLevel > 1) {
+                ctx.fillStyle = '#00FF00';
+                ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', canvas.width / 2, canvas.height / 2 + 100);
+            }
+        }
+        
+        // Level-specific info
+        if (currentLevel === 2) {
+            ctx.fillStyle = '#FF4500';
+            ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', canvas.width / 2, canvas.height / 2 + 120);
+        }
+    }
+}
 // Handle mouse clicks for level selection
 canvas.addEventListener('click', (e) => {
     if (levelSelectionMode && !gameRunning) {
@@ -1253,25 +1269,8 @@ canvas.addEventListener('click', (e) => {
             gameLoop();
         }
     }
-});            ctx.fillStyle = '#FFFF00';
-            ctx.fillText('Boss defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
-            
-            if (currentLevel > 1) {
-                ctx.fillStyle = '#00FF00';
-                ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', canvas.width / 2, canvas.height / 2 + 100);
-            }
-        }
-        
-        // Level-specific info
-        if (currentLevel === 2) {
-            ctx.fillStyle = '#FF4500';
-            ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', canvas.width / 2, canvas.height / 2 + 120);
-        }
-    }
-}
-}
+});
 
-// Event listeners
 // Event listeners
 startButton.addEventListener('click', () => {
     if (!gameRunning) {
