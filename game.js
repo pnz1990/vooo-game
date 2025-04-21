@@ -21,6 +21,7 @@ let cameraX = 0;
 let bossHits = 0;
 let bossDefeated = false;
 let doubleJumpEnabled = true; // Enable double jump feature
+let debugMode = true; // Enable debug information
 
 // Game assets
 const assets = {
@@ -570,25 +571,8 @@ function updatePlayer() {
         assets.vooo.facingRight = true;
     }
     
-    // Handle jumping and double jumping
-    if ((keys['KeyW'] || keys['ArrowUp'] || keys['Space'])) {
-        // First jump when on the ground
-        if (!player.jumping) {
-            player.velocityY = player.jumpPower;
-            player.jumping = true;
-            player.canDoubleJump = doubleJumpEnabled; // Enable double jump after first jump
-            assets.vooo.isJumping = true;
-        }
-        // Double jump when in the air and double jump is available
-        else if (player.canDoubleJump && !player.doubleJumping) {
-            player.velocityY = player.doubleJumpPower;
-            player.doubleJumping = true;
-            player.canDoubleJump = false;
-            
-            // Visual effect for double jump (particle effect)
-            createDoubleJumpEffect();
-        }
-    }
+    // Handle jumping and double jumping - REMOVED from here to avoid duplicate jumps
+    // Jump handling is now only in the keydown event listener
     
     // Apply gravity
     player.velocityY += gravity;
@@ -948,9 +932,9 @@ function drawPlayer() {
     
     // Draw double jump indicator if available
     if (player.jumping && player.canDoubleJump) {
-        // Draw a subtle glow around the player
+        // Draw a more visible glow around the player
         ctx.save();
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = 0.7;
         ctx.fillStyle = '#FFFFFF';
         ctx.beginPath();
         ctx.arc(screenX + player.width/2, player.y + player.height/2, 
@@ -958,6 +942,22 @@ function drawPlayer() {
         ctx.fill();
         ctx.globalAlpha = 1.0;
         ctx.restore();
+        
+        // Add text indicator for double jump
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Double Jump!', screenX + player.width/2, player.y - 10);
+    }
+    
+    // Debug info
+    if (debugMode) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`jumping: ${player.jumping}`, screenX, player.y - 30);
+        ctx.fillText(`doubleJumping: ${player.doubleJumping}`, screenX, player.y - 15);
+        ctx.fillText(`canDoubleJump: ${player.canDoubleJump}`, screenX, player.y);
     }
 }
 
@@ -1118,12 +1118,15 @@ window.addEventListener('keydown', (e) => {
         
         // Handle jump key press
         if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && gameRunning) {
+            console.log("Jump key pressed. jumping:", player.jumping, "doubleJumping:", player.doubleJumping, "canDoubleJump:", player.canDoubleJump);
+            
             // First jump
             if (!player.jumping) {
                 player.velocityY = player.jumpPower;
                 player.jumping = true;
                 player.canDoubleJump = doubleJumpEnabled;
                 assets.vooo.isJumping = true;
+                console.log("First jump executed");
             }
             // Double jump
             else if (player.canDoubleJump && !player.doubleJumping) {
@@ -1133,6 +1136,7 @@ window.addEventListener('keydown', (e) => {
                 
                 // Visual effect for double jump
                 createDoubleJumpEffect();
+                console.log("Double jump executed");
             }
         }
     }
