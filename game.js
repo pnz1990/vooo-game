@@ -425,9 +425,12 @@ function initLevel() {
         }
     }
     
-    // Add enemies - more of them
+    // Add enemies - number based on level
     enemies = [];
-    for (let i = 0; i < 30; i++) {
+    // Fewer enemies in level 1, more in higher levels
+    const enemyCount = currentLevel === 1 ? 15 : 30;
+    
+    for (let i = 0; i < enemyCount; i++) {
         const enemyX = 600 + i * 250 + Math.random() * 100;
         // Position enemies on top of the ground, not buried in it
         const enemyY = canvas.height - 40 - assets.strawberry.height;
@@ -445,9 +448,11 @@ function initLevel() {
         }
     }
     
-    // Add some enemies on platforms
+    // Add some enemies on platforms - fewer in level 1
+    const platformEnemyChance = currentLevel === 1 ? 0.2 : 0.4;
+    
     platforms.forEach((platform, index) => {
-        if (index > 0 && platform.width > 80 && Math.random() > 0.4 && platform.x < 7500) {
+        if (index > 0 && platform.width > 80 && Math.random() > (1 - platformEnemyChance) && platform.x < 7500) {
             enemies.push({
                 x: platform.x + platform.width/2,
                 // Position enemies on top of platforms, not buried in them
@@ -1050,7 +1055,7 @@ function showMessage(text) {
         
         if (currentLevel > 1) {
             ctx.fillStyle = '#00FF00';
-            ctx.fillText('Next level will be ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster!', canvas.width / 2, canvas.height / 2 + 150);
+            ctx.fillText('Next level will be ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster with more enemies!', canvas.width / 2, canvas.height / 2 + 150);
         }
     }
 }

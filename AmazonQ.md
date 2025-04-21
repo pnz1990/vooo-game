@@ -1,4 +1,4 @@
-# Game Speed Modifications
+# Game Speed and Difficulty Modifications
 
 ## Changes Made
 
@@ -20,6 +20,11 @@
    - Speed increases with each level
    - UI shows current level and indicates speed increase for next level
 
+4. **Enemy Scaling**:
+   - Level 1 has fewer enemies (15 instead of 30)
+   - Level 1 has fewer platform-based enemies (20% chance vs 40% in higher levels)
+   - Higher levels have more enemies for increased difficulty
+
 ## How It Works
 
 The game now uses a `speedMultiplier` variable that affects all movement in the game:
@@ -32,7 +37,17 @@ speedMultiplier = 0.85;
 speedMultiplier = 1 + ((currentLevel - 2) * 0.1);
 ```
 
-When a player completes a level, the `currentLevel` variable increments, which will increase the `speedMultiplier` for the next game.
+Enemy count is also adjusted based on level:
+
+```javascript
+// Fewer enemies in level 1, more in higher levels
+const enemyCount = currentLevel === 1 ? 15 : 30;
+
+// Fewer platform enemies in level 1
+const platformEnemyChance = currentLevel === 1 ? 0.2 : 0.4;
+```
+
+When a player completes a level, the `currentLevel` variable increments, which will increase the `speedMultiplier` and enemy count for the next game.
 
 ## Future Enhancements
 
