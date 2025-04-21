@@ -21,7 +21,7 @@ let cameraX = 0;
 let bossHits = 0;
 let bossDefeated = false;
 let doubleJumpEnabled = true; // Enable double jump feature
-let debugMode = true; // Enable debug information
+let debugMode = false; // Disable debug information
 
 // Game assets
 const assets = {
@@ -942,15 +942,9 @@ function drawPlayer() {
         ctx.fill();
         ctx.globalAlpha = 1.0;
         ctx.restore();
-        
-        // Add text indicator for double jump
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '14px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('Double Jump!', screenX + player.width/2, player.y - 10);
     }
     
-    // Debug info
+    // Debug info - only shown if debugMode is true
     if (debugMode) {
         ctx.fillStyle = '#FFFFFF';
         ctx.font = '12px Arial';
@@ -1118,15 +1112,12 @@ window.addEventListener('keydown', (e) => {
         
         // Handle jump key press
         if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && gameRunning) {
-            console.log("Jump key pressed. jumping:", player.jumping, "doubleJumping:", player.doubleJumping, "canDoubleJump:", player.canDoubleJump);
-            
             // First jump
             if (!player.jumping) {
                 player.velocityY = player.jumpPower;
                 player.jumping = true;
                 player.canDoubleJump = doubleJumpEnabled;
                 assets.vooo.isJumping = true;
-                console.log("First jump executed");
             }
             // Double jump
             else if (player.canDoubleJump && !player.doubleJumping) {
@@ -1136,7 +1127,6 @@ window.addEventListener('keydown', (e) => {
                 
                 // Visual effect for double jump
                 createDoubleJumpEffect();
-                console.log("Double jump executed");
             }
         }
     }
