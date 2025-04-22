@@ -507,27 +507,38 @@ function initLevel() {
     
     for (let i = 0; i < enemyCount; i++) {
         const enemyX = 600 + i * 250 + Math.random() * 100;
+        
+        // IMPORTANT: Skip this iteration if the enemy would be in the boss area
+        if (enemyX >= 7500) {
+            continue;
+        }
+        
         // Position enemies on top of the ground, not buried in it
         const enemyY = canvas.height - 40 - assets.strawberry.height;
         
-        // Don't place enemies in the boss area
-        if (enemyX < 7500) {
-            enemies.push({
-                x: enemyX,
-                y: enemyY,
-                width: assets.strawberry.width,
-                height: assets.strawberry.height,
-                velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier, // Random direction adjusted by speed multiplier
-                active: true
-            });
-        }
+        enemies.push({
+            x: enemyX,
+            y: enemyY,
+            width: assets.strawberry.width,
+            height: assets.strawberry.height,
+            velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier, // Random direction adjusted by speed multiplier
+            active: true
+        });
     }
     
     // Add some enemies on platforms - fewer in level 1
     const platformEnemyChance = currentLevel === 1 ? 0.1 : 0.4;
     
-    platforms.forEach((platform, index) => {
-        if (index > 0 && platform.width > 80 && Math.random() > (1 - platformEnemyChance) && platform.x < 7500) {
+    // Filter platforms to only include those outside the boss area
+    const nonBossPlatforms = platforms.filter(platform => platform.x < 7500 || platform.type === 'ground');
+    
+    nonBossPlatforms.forEach((platform, index) => {
+        // Skip ground platforms and platforms in boss area
+        if (platform.type === 'ground' || platform.x >= 7500) {
+            return;
+        }
+        
+        if (platform.width > 80 && Math.random() > (1 - platformEnemyChance)) {
             enemies.push({
                 x: platform.x + platform.width/2,
                 // Position enemies on top of platforms, not buried in them
@@ -535,7 +546,7 @@ function initLevel() {
                 width: assets.strawberry.width,
                 height: assets.strawberry.height,
                 velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier, // Move left or right, adjusted by speed multiplier
-                platformIndex: index,
+                platformIndex: platforms.indexOf(platform), // Get the actual index in the original array
                 active: true
             });
         }
