@@ -458,7 +458,6 @@ function initLevel() {
             }
         }
     }
-    }
     
     // Add platforms - more of them and more varied
     for (let i = 0; i < 40; i++) {
