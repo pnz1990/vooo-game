@@ -15,7 +15,7 @@ let lives = 3;
 let currentLevel = 1;
 let maxLevel = 2; // Maximum available level
 let speedMultiplier = 0.85; // Level 1: 15% slower (0.85)
-let gravity = 0.46 * speedMultiplier; // Base gravity adjusted by speed multiplier
+let gravity = 0.46; // Base gravity value
 let keys = {};
 let cameraX = 0;
 let levelSelectionMode = false; // Whether we're in level selection mode
@@ -1079,12 +1079,19 @@ function drawObstacles() {
             for (let i = 0; i < obstacle.width / 10; i++) {
                 const bubbleX = screenX + i * 10 + Math.sin(time + i) * 5;
                 const bubbleY = obstacle.y + Math.sin(time * 2 + i * 0.7) * 8; // Increased amplitude
-                const bubbleSize = 2 + Math.sin(time * 3 + i * 1.5) * 3; // Larger bubbles
+                const bubbleSize = Math.max(1, 2 + Math.sin(time * 3 + i * 1.5) * 2.5); // Ensure positive radius
                 
                 ctx.fillStyle = assets.lava.glowColor;
+                try {
                 ctx.beginPath();
-                ctx.arc(bubbleX, bubbleY, bubbleSize, 0, Math.PI * 2);
+                // Ensure radius is positive
+                const safeRadius = Math.abs(bubbleSize);
+                ctx.arc(bubbleX, bubbleY, safeRadius, 0, Math.PI * 2);
                 ctx.fill();
+            } catch (e) {
+                // Fallback to a simple rectangle if arc fails
+                ctx.fillRect(bubbleX - 2, bubbleY - 2, 4, 4);
+            }
             }
             
             // Add glow effect
