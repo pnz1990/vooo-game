@@ -386,6 +386,7 @@ function initLevel() {
     } else {
         // Level 2+: Ground with lava gaps
         platforms = [];
+        obstacles = []; // Clear obstacles first
         let currentX = 0;
         
         while (currentX < 8000) {
@@ -395,7 +396,7 @@ function initLevel() {
             if (currentX < 500) {
                 // Safe starting area
                 segmentLength = 500;
-            } else if (currentX > 7500) {
+            } else if (currentX > 7400) { // Match buffer zone
                 // Safe boss area
                 segmentLength = 8000 - currentX;
             } else {
@@ -405,10 +406,10 @@ function initLevel() {
                 // Add lava gap after this segment
                 const gapLength = Math.random() * 100 + 80;
                 
-                // Add lava obstacle
+                // Add lava obstacle IN THE GAP (not on top of ground)
                 obstacles.push({
                     x: currentX + segmentLength,
-                    y: canvas.height - 20, // Position lava at the bottom of the screen
+                    y: canvas.height - 40, // Align with bottom of screen
                     width: gapLength,
                     height: 40, // Match the height of the ground platforms
                     type: 'lava'
@@ -829,12 +830,25 @@ function updateEnemies() {
             return;
         }
         
-        // Move enemy
+        // Apply gravity to ground enemies
+        if (enemy.platformIndex === undefined) {
+            enemy.velocityY = enemy.velocityY || 0;
+            enemy.velocityY += gravity;
+            enemy.y += enemy.velocityY;
+        }
+        
+        // Move enemy horizontally
         enemy.x += enemy.velocityX;
         
         // Check if enemy is on a platform
         if (enemy.platformIndex !== undefined) {
             const platform = platforms[enemy.platformIndex];
+            
+            // Skip if platform no longer exists
+            if (!platform) {
+                enemy.active = false;
+                return;
+            }
             
             // Keep enemy on platform
             if (enemy.x < platform.x) {
@@ -843,6 +857,65 @@ function updateEnemies() {
             } else if (enemy.x + enemy.width > platform.x + platform.width) {
                 enemy.velocityX *= -1;
                 enemy.x = platform.x + platform.width - enemy.width;
+            }
+        } else {
+            // Ground enemy - check if it's still on ground
+            let onGround = false;
+            
+            // Check for collisions with ground platforms
+            for (let i = 0; i < platforms.length; i++) {
+                const platform = platforms[i];
+                if (platform.type === 'ground' && 
+                    enemy.x + enemy.width > platform.x && 
+                    enemy.x < platform.x + platform.width &&
+                    enemy.y + enemy.height > platform.y &&
+                    enemy.y + enemy.height < platform.y + platform.height + 5) {
+                    
+                    enemy.y = platform.y - enemy.height;
+                    enemy.velocityY = 0;
+                    onGround = true;
+                    break;
+                }
+            }
+            
+            // If enemy is not on ground, it should fall
+            if (!onGround) {
+                // Check if enemy fell off screen
+                if (enemy.y > canvas.height) {
+                    enemy.active = false;
+                }
+                
+                // Check if enemy fell into lava
+                obstacles.forEach(obstacle => {
+                    if (obstacle.type === 'lava' &&
+                        enemy.x + enemy.width > obstacle.x &&
+                        enemy.x < obstacle.x + obstacle.width &&
+                        enemy.y + enemy.height > obstacle.y) {
+                        enemy.active = false;
+                    }
+                });
+            } else {
+                // If at edge of platform, turn around
+                let foundPlatform = false;
+                for (let i = 0; i < platforms.length; i++) {
+                    const platform = platforms[i];
+                    if (platform.type === 'ground') {
+                        // Check if about to walk off edge
+                        if (enemy.velocityX > 0 && 
+                            enemy.x + enemy.width + 5 > platform.x + platform.width &&
+                            enemy.x < platform.x + platform.width) {
+                            enemy.velocityX *= -1;
+                            foundPlatform = true;
+                            break;
+                        } else if (enemy.velocityX < 0 && 
+                                  enemy.x - 5 < platform.x &&
+                                  enemy.x + enemy.width > platform.x) {
+                            enemy.velocityX *= -1;
+                            foundPlatform = true;
+                            break;
+                        }
+                    }
+                }
             }
         }
         
@@ -982,7 +1055,7 @@ function drawObstacles() {
             
             // Create lava gradient
             const lavaGradient = ctx.createLinearGradient(
-                screenX, obstacle.y - 10, // Start gradient above the lava surface
+                screenX, obstacle.y - 5, // Start gradient slightly above the lava surface
                 screenX, obstacle.y + obstacle.height
             );
             
@@ -991,12 +1064,12 @@ function drawObstacles() {
             lavaGradient.addColorStop(1, '#990000');
             
             ctx.fillStyle = lavaGradient;
-            ctx.fillRect(screenX, obstacle.y - 10, obstacle.width, obstacle.height + 10); // Extend lava upward for better visibility
+            ctx.fillRect(screenX, obstacle.y - 5, obstacle.width, obstacle.height + 5); // Extend lava upward slightly
             
             // Add glow effect around lava
             ctx.shadowColor = assets.lava.glowColor;
             ctx.shadowBlur = 15;
-            ctx.fillRect(screenX, obstacle.y - 15, obstacle.width, 5);
+            ctx.fillRect(screenX, obstacle.y - 10, obstacle.width, 5);
             ctx.shadowBlur = 0;
             
             // Add bubbling effect
