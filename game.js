@@ -1401,7 +1401,6 @@ canvas.addEventListener('click', () => {
         showMessage("VOOO's Adventure");
     }
 });
-});
 
 // Handle mouse clicks for level selection
 canvas.addEventListener('click', (e) => {
