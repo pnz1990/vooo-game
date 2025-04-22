@@ -1334,7 +1334,7 @@ function showMessage(text) {
     } else {
         // Regular game message
         ctx.font = '18px Arial';
-        ctx.fillText('Press Start to play', canvas.width / 2, canvas.height / 2 + 20);
+        ctx.fillText('Click anywhere to play', canvas.width / 2, canvas.height / 2 + 20);
         
         // Controls info - condensed to one line, smaller font
         ctx.font = '14px Arial';
@@ -1659,4 +1659,12 @@ window.addEventListener('load', () => {
     
     // Load assets
     loadAssets();
+    
+    // Add click handler for starting the game from welcome screen
+    canvas.addEventListener('click', (e) => {
+        if (!gameRunning && !levelSelectionMode) {
+            levelSelectionMode = true;
+            showMessage("VOOO's Adventure");
+        }
+    });
 });
