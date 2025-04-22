@@ -35,6 +35,17 @@ class AssetManager {
                 frameCount: 0,
                 frameDelay: 15
             },
+            cherry: {
+                img: null,
+                width: config.ENEMY_WIDTH,
+                height: config.ENEMY_HEIGHT,
+                spriteWidth: 1024,
+                spriteHeight: 1024,
+                frames: 1,
+                currentFrame: 0,
+                frameCount: 0,
+                frameDelay: 15
+            },
             lava: {
                 color: '#FF4500',
                 glowColor: '#FFFF00',
@@ -69,7 +80,7 @@ class AssetManager {
         
         this.currentLevel = 1;
         this.imagesLoaded = 0;
-        this.totalImages = 4; // running.png, jumping.png, enemies.png, boss.png
+        this.totalImages = 5; // running.png, jumping.png, enemies.png, cherry-enemies.png, boss.png
         this.onAllLoaded = null;
     }
     
@@ -121,16 +132,21 @@ class AssetManager {
             this.checkAllImagesLoaded();
         };
         
-        // Load enemies sprite based on level
+        // Load strawberry enemies sprite
         this.assets.strawberry.img = new Image();
-        if (this.currentLevel === 3) {
-            this.assets.strawberry.img.src = 'cherry-enemies.png';
-        } else {
-            this.assets.strawberry.img.src = 'enemies.png';
-        }
+        this.assets.strawberry.img.src = 'enemies.png';
         this.assets.strawberry.img.onload = () => this.checkAllImagesLoaded();
         this.assets.strawberry.img.onerror = () => {
             console.error("Error loading enemies.png");
+            this.checkAllImagesLoaded();
+        };
+        
+        // Load cherry enemies sprite
+        this.assets.cherry.img = new Image();
+        this.assets.cherry.img.src = 'cherry-enemies.png';
+        this.assets.cherry.img.onload = () => this.checkAllImagesLoaded();
+        this.assets.cherry.img.onerror = () => {
+            console.error("Error loading cherry-enemies.png");
             this.checkAllImagesLoaded();
         };
         
@@ -159,7 +175,7 @@ class AssetManager {
      */
     checkAllImagesLoaded() {
         this.imagesLoaded++;
-        if (this.imagesLoaded === this.totalImages && this.onAllLoaded) {
+        if (this.imagesLoaded === this.totalImages + 1 && this.onAllLoaded) {
             this.onAllLoaded();
         }
     }
