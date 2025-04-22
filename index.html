@@ -73,14 +73,6 @@
             background-color: #2980b9;
         }
         
-        #jumpButton {
-            background-color: #e74c3c;
-        }
-        
-        #jumpButton:hover {
-            background-color: #c0392b;
-        }
-        
         h1 {
             margin-bottom: 10px;
             color: #3498db;
@@ -107,8 +99,7 @@
     </div>
     
     <div id="controls">
-        <button id="startButton">Start Game</button>
-        <button id="jumpButton">Jump</button>
+        <!-- Only keep the reload button which will be added via JavaScript -->
     </div>
     
     <div id="instructions">
@@ -117,34 +108,9 @@
     </div>
     
     <!-- Add a version parameter to prevent caching -->
-    <script src="game.js?v=1.0.1"></script>
+    <script src="game.js?v=1.0.2"></script>
     
     <script>
-        // Add jump button functionality for mobile/touch devices
-        document.getElementById('jumpButton').addEventListener('click', function() {
-            // Simulate a space key press
-            const spaceEvent = new KeyboardEvent('keydown', {
-                code: 'Space',
-                key: ' ',
-                keyCode: 32,
-                which: 32,
-                bubbles: true
-            });
-            window.dispatchEvent(spaceEvent);
-            
-            // Simulate key release after a short delay
-            setTimeout(function() {
-                const keyupEvent = new KeyboardEvent('keyup', {
-                    code: 'Space',
-                    key: ' ',
-                    keyCode: 32,
-                    which: 32,
-                    bubbles: true
-                });
-                window.dispatchEvent(keyupEvent);
-            }, 100);
-        });
-        
         // Force reload without cache
         function forceReload() {
             window.location.reload(true);

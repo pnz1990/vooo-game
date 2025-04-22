@@ -1,7 +1,6 @@
 // Game canvas setup
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const startButton = document.getElementById('startButton');
 const scoreElement = document.getElementById('score');
 const livesElement = document.getElementById('lives');
 
@@ -1652,3 +1651,12 @@ function createDoubleJumpEffect() {
     // Start animation
     animateParticles();
 }
+// Initialize the game when the page loads
+window.addEventListener('load', () => {
+    // Show level selection immediately
+    levelSelectionMode = true;
+    showMessage("VOOO's Adventure");
+    
+    // Load assets
+    loadAssets();
+});
