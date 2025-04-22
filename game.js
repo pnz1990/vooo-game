@@ -708,13 +708,13 @@ function updatePlayer() {
         }
         
         if (
-            player.y + player.height > platform.y + 5 &&
-            player.y < platform.y + platform.height - 5 &&
+            player.y + player.height > platform.y &&
+            player.y < platform.y + platform.height &&
             player.x + player.width - 5 > platform.x &&
             player.x + 5 < platform.x + platform.width
         ) {
             // Collision from above (landing on platform)
-            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y) {
+            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
                 player.y = platform.y - player.height;
                 player.velocityY = 0;
                 player.jumping = false;
@@ -988,13 +988,13 @@ function updateBoss() {
         }
         
         if (
-            boss.y + boss.height > platform.y + 5 &&
-            boss.y < platform.y + platform.height - 5 &&
+            boss.y + boss.height > platform.y &&
+            boss.y < platform.y + platform.height &&
             boss.x + boss.width - 5 > platform.x &&
             boss.x + 5 < platform.x + platform.width
         ) {
             // Collision from above (landing on platform)
-            if (boss.velocityY > 0 && boss.y + boss.height - boss.velocityY <= platform.y) {
+            if (boss.velocityY > 0 && boss.y + boss.height - boss.velocityY <= platform.y + 10) {
                 boss.y = platform.y - boss.height;
                 boss.velocityY = 0;
                 
