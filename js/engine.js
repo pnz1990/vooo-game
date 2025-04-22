@@ -101,8 +101,7 @@ class GameEngine {
                 this.currentLevel = level;
                 this.levelSelectionMode = false;
                 this.initLevel();
-                this.gameRunning = true;
-                this.gameLoop();
+                // The gameLoop will be started after assets are loaded in initLevel()
             }
         };
     }
@@ -130,6 +129,7 @@ class GameEngine {
         this.obstacles = [];
         this.cameraX = 0;
         this.bossDefeated = false;
+        this.gameRunning = false; // Ensure game is not running until assets are loaded
         
         // Set speed multiplier based on current level
         this.speedMultiplier = this.getSpeedMultiplier();
@@ -160,6 +160,10 @@ class GameEngine {
             // Update UI
             this.uiManager.updateScoreDisplay(this.player.score, this.currentLevel);
             this.uiManager.updateLivesDisplay(this.lives);
+            
+            // Now that everything is loaded and initialized, start the game
+            this.gameRunning = true;
+            this.gameLoop();
         });
     }
     
@@ -187,15 +191,17 @@ class GameEngine {
             );
         }
         
-        // Update enemies
-        this.enemyManager.update(
-            this.platforms, 
-            this.obstacles, 
-            this.player, 
-            this.gravity, 
-            this.canvas.height, 
-            this.config.BOSS_AREA_START
-        );
+        // Update enemies only if player exists
+        if (this.player) {
+            this.enemyManager.update(
+                this.platforms, 
+                this.obstacles, 
+                this.player, 
+                this.gravity, 
+                this.canvas.height, 
+                this.config.BOSS_AREA_START
+            );
+        }
         
         // Update boss
         if (this.boss) {
