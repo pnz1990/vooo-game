@@ -1,140 +1,348 @@
-/**
- * Enemy management and behavior
- */
-import CONFIG from './config.js';
+// enemies.js - Enemy entities and related functionality
 
+/**
+ * Enemy class representing strawberry/cherry enemies
+ */
+class Enemy {
+    /**
+     * Create a new Enemy
+     * @param {Object} config - Game configuration
+     * @param {Object} options - Enemy options
+     * @param {number} options.x - X position
+     * @param {number} options.y - Y position
+     * @param {number} options.velocityX - Horizontal velocity
+     * @param {number} [options.platformIndex] - Index of platform enemy is on
+     */
+    constructor(config, options) {
+        this.config = config;
+        this.x = options.x;
+        this.y = options.y;
+        this.width = config.ENEMY_WIDTH;
+        this.height = config.ENEMY_HEIGHT;
+        this.velocityX = options.velocityX;
+        this.velocityY = 0;
+        this.platformIndex = options.platformIndex;
+        this.active = true;
+    }
+    
+    /**
+     * Update enemy state
+     * @param {Array} platforms - Game platforms
+     * @param {Array} obstacles - Game obstacles
+     * @param {Object} player - Player object
+     * @param {number} gravity - Current gravity value
+     * @param {number} canvasHeight - Canvas height
+     * @param {number} bossAreaStart - X position where boss area starts
+     */
+    update(platforms, obstacles, player, gravity, canvasHeight, bossAreaStart) {
+        if (!this.active) return;
+        
+        // Deactivate enemies that enter the boss area or buffer zone
+        if (this.x > bossAreaStart) {
+            this.active = false;
+            return;
+        }
+        
+        // Apply gravity to ground enemies
+        if (this.platformIndex === undefined) {
+            this.velocityY += gravity;
+            this.y += this.velocityY;
+        }
+        
+        // Move enemy horizontally
+        this.x += this.velocityX;
+        
+        // Check if enemy is on a platform
+        if (this.platformIndex !== undefined) {
+            this.updatePlatformEnemy(platforms);
+        } else {
+            // Ground enemy - check if it's still on ground
+            this.updateGroundEnemy(platforms, canvasHeight);
+        }
+        
+        // Check if enemy fell into lava
+        obstacles.forEach(obstacle => {
+            if (obstacle.type === 'lava' &&
+                this.x + this.width > obstacle.x &&
+                this.x < obstacle.x + obstacle.width &&
+                this.y + this.height > obstacle.y) {
+                this.active = false;
+            }
+        });
+        
+        // Check collision with player
+        this.checkPlayerCollision(player);
+    }
+    
+    /**
+     * Update platform-based enemy
+     * @param {Array} platforms - Game platforms
+     */
+    updatePlatformEnemy(platforms) {
+        const platform = platforms[this.platformIndex];
+        
+        // Skip if platform no longer exists
+        if (!platform) {
+            this.active = false;
+            return;
+        }
+        
+        // Keep enemy on platform
+        if (this.x < platform.x) {
+            this.velocityX *= -1;
+            this.x = platform.x;
+        } else if (this.x + this.width > platform.x + platform.width) {
+            this.velocityX *= -1;
+            this.x = platform.x + platform.width - this.width;
+        }
+    }
+    
+    /**
+     * Update ground-based enemy
+     * @param {Array} platforms - Game platforms
+     * @param {number} canvasHeight - Canvas height
+     */
+    updateGroundEnemy(platforms, canvasHeight) {
+        let onGround = false;
+        
+        // Check for collisions with ground platforms
+        for (let i = 0; i < platforms.length; i++) {
+            const platform = platforms[i];
+            if (platform.type === 'ground' && 
+                this.x + this.width > platform.x && 
+                this.x < platform.x + platform.width &&
+                this.y + this.height > platform.y &&
+                this.y + this.height < platform.y + platform.height + 5) {
+                
+                this.y = platform.y - this.height;
+                this.velocityY = 0;
+                onGround = true;
+                
+                // If at edge of platform, turn around
+                if (this.velocityX > 0 && 
+                    this.x + this.width + 5 > platform.x + platform.width) {
+                    this.velocityX *= -1;
+                } else if (this.velocityX < 0 && 
+                          this.x - 5 < platform.x) {
+                    this.velocityX *= -1;
+                }
+                
+                break;
+            }
+        }
+        
+        // If enemy is not on ground, it should fall
+        if (!onGround) {
+            // Check if enemy fell off screen
+            if (this.y > canvasHeight) {
+                this.active = false;
+            }
+        }
+    }
+    
+    /**
+     * Check collision with player
+     * @param {Object} player - Player object
+     */
+    checkPlayerCollision(player) {
+        const { checkCollision } = window.GameUtils;
+        
+        if (!player.invulnerable && this.active &&
+            checkCollision(
+                player,
+                this,
+                { top: 5, right: 5, bottom: 5, left: 5 }
+            )
+        ) {
+            // Check if player is jumping on enemy from above
+            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= this.y + this.height/4) {
+                // Defeat enemy
+                this.active = false;
+                player.velocityY = player.jumpPower * 0.7; // Bounce
+                player.score += this.config.ENEMY_DEFEAT_SCORE;
+            } else {
+                // Player gets hit
+                player.isAlive = false;
+            }
+        }
+    }
+    
+    /**
+     * Draw the enemy
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {number} cameraX - Camera X position
+     * @param {Object} assets - Game assets
+     * @param {number} currentLevel - Current level
+     */
+    draw(ctx, cameraX, assets, currentLevel) {
+        if (!this.active) return;
+        
+        const { safeDrawImage } = window.GameUtils;
+        const screenX = this.x - cameraX;
+        
+        // Skip if off-screen
+        if (screenX + this.width < 0 || screenX > ctx.canvas.width) return;
+        
+        // For level 3 (cherry enemies), flip based on direction
+        if (currentLevel === 3) {
+            safeDrawImage(
+                ctx,
+                assets.strawberry.img,
+                screenX,
+                this.y,
+                this.width,
+                this.height,
+                this.velocityX < 0
+            );
+        } else {
+            // Regular drawing for other levels
+            safeDrawImage(
+                ctx,
+                assets.strawberry.img,
+                screenX,
+                this.y,
+                this.width,
+                this.height
+            );
+        }
+    }
+}
+
+/**
+ * EnemyManager class for creating and managing enemies
+ */
 class EnemyManager {
-    constructor(gameState) {
-        this.gameState = gameState;
+    /**
+     * Create a new EnemyManager
+     * @param {Object} config - Game configuration
+     */
+    constructor(config) {
+        this.config = config;
         this.enemies = [];
     }
-
-    createEnemies(platforms, currentLevel, speedMultiplier) {
+    
+    /**
+     * Create enemies for the current level
+     * @param {number} currentLevel - Current level
+     * @param {Array} platforms - Game platforms
+     * @param {number} bossAreaStart - X position where boss area starts
+     */
+    createEnemies(currentLevel, platforms, bossAreaStart) {
         this.enemies = [];
         
         // Determine enemy count based on level
         let enemyCount;
         
         if (currentLevel === 1) {
-            enemyCount = CONFIG.levels.level1.enemyCount;
+            enemyCount = this.config.LEVEL_1_ENEMY_COUNT;
         } else if (currentLevel === 2) {
-            enemyCount = Math.floor(CONFIG.levels.baseEnemyCount * 1.1);
+            enemyCount = Math.floor(this.config.BASE_ENEMY_COUNT * 1.1);
+        } else if (currentLevel === 3) {
+            enemyCount = Math.floor(this.config.BASE_ENEMY_COUNT * 1.2);
         } else {
-            enemyCount = Math.floor(CONFIG.levels.baseEnemyCount * (1 + (currentLevel - 2) * 0.15));
+            enemyCount = Math.floor(this.config.BASE_ENEMY_COUNT * (1 + (currentLevel - 2) * 0.15));
         }
         
-        // Create ground-based enemies
+        // Calculate speed multiplier
+        const speedMultiplier = currentLevel === 1 ? 
+            this.config.LEVEL_1_SPEED_MULTIPLIER : 
+            1 + ((currentLevel - 2) * this.config.LEVEL_SPEED_INCREMENT);
+        
+        // Create ground enemies
         for (let i = 0; i < enemyCount; i++) {
             const enemyX = 600 + i * 250 + Math.random() * 100;
-            // Position enemies on top of the ground, not buried in it
-            const enemyY = CONFIG.canvas.height - 40 - CONFIG.enemies.strawberry.height;
             
-            // Don't place enemies in the boss area
-            if (enemyX < 7500) {
-                this.enemies.push({
-                    x: enemyX,
-                    y: enemyY,
-                    width: CONFIG.enemies.strawberry.width,
-                    height: CONFIG.enemies.strawberry.height,
-                    velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
-                    active: true
-                });
+            // Skip if enemy would be in boss area
+            if (enemyX >= bossAreaStart) {
+                continue;
             }
+            
+            // Position enemies on top of the ground
+            const enemyY = this.config.CANVAS_HEIGHT - this.config.TILE_SIZE - this.config.ENEMY_HEIGHT;
+            
+            this.enemies.push(new Enemy(this.config, {
+                x: enemyX,
+                y: enemyY,
+                velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier
+            }));
         }
         
-        // Add platform-based enemies - fewer in level 1
-        const platformEnemyChance = currentLevel === 1 ? 
-            CONFIG.levels.level1.platformEnemyChance : 0.4;
+        // Add platform-based enemies
+        this.addPlatformEnemies(currentLevel, platforms, bossAreaStart, speedMultiplier);
+    }
+    
+    /**
+     * Add enemies on platforms
+     * @param {number} currentLevel - Current level
+     * @param {Array} platforms - Game platforms
+     * @param {number} bossAreaStart - X position where boss area starts
+     * @param {number} speedMultiplier - Speed multiplier for current level
+     */
+    addPlatformEnemies(currentLevel, platforms, bossAreaStart, speedMultiplier) {
+        // Determine platform enemy chance based on level
+        let platformEnemyChance;
         
-        platforms.forEach((platform, index) => {
-            if (index > 0 && platform.width > 80 && 
-                Math.random() > (1 - platformEnemyChance) && 
-                platform.x < 7500) {
-                
-                this.enemies.push({
+        if (currentLevel === 1) {
+            platformEnemyChance = this.config.LEVEL_1_PLATFORM_ENEMY_CHANCE;
+        } else if (currentLevel === 2) {
+            platformEnemyChance = this.config.LEVEL_2_PLATFORM_ENEMY_CHANCE;
+        } else {
+            platformEnemyChance = this.config.LEVEL_3_PLATFORM_ENEMY_CHANCE;
+        }
+        
+        // Filter platforms to only include those outside the boss area
+        const nonBossPlatforms = platforms.filter(platform => 
+            platform.x < bossAreaStart || platform.type === 'ground'
+        );
+        
+        nonBossPlatforms.forEach((platform, index) => {
+            // Skip ground platforms and platforms in boss area
+            if (platform.type === 'ground' || platform.x >= bossAreaStart) {
+                return;
+            }
+            
+            if (platform.width > 80 && Math.random() > (1 - platformEnemyChance)) {
+                this.enemies.push(new Enemy(this.config, {
                     x: platform.x + platform.width/2,
-                    y: platform.y - CONFIG.enemies.strawberry.height,
-                    width: CONFIG.enemies.strawberry.width,
-                    height: CONFIG.enemies.strawberry.height,
+                    y: platform.y - this.config.ENEMY_HEIGHT,
                     velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
-                    platformIndex: index,
-                    active: true
-                });
-            }
-        });
-        
-        return this.enemies;
-    }
-
-    update(player, platforms) {
-        this.enemies.forEach(enemy => {
-            if (!enemy.active) return;
-            
-            // Move enemy
-            enemy.x += enemy.velocityX;
-            
-            // Check if enemy is on a platform
-            if (enemy.platformIndex !== undefined) {
-                const platform = platforms[enemy.platformIndex];
-                
-                // Keep enemy on platform
-                if (enemy.x < platform.x) {
-                    enemy.velocityX *= -1;
-                    enemy.x = platform.x;
-                } else if (enemy.x + enemy.width > platform.x + platform.width) {
-                    enemy.velocityX *= -1;
-                    enemy.x = platform.x + platform.width - enemy.width;
-                }
-            }
-            
-            // Check collision with player
-            if (
-                !player.invulnerable &&
-                player.x < enemy.x + enemy.width &&
-                player.x + player.width > enemy.x &&
-                player.y < enemy.y + enemy.height &&
-                player.y + player.height > enemy.y
-            ) {
-                // Check if player is jumping on enemy from above
-                if (player.velocityY > 0 && player.y + player.height - player.velocityY <= enemy.y) {
-                    // Defeat enemy
-                    enemy.active = false;
-                    player.velocityY = player.jumpPower * 0.7; // Bounce
-                    this.gameState.score += 100;
-                    this.gameState.updateScoreDisplay();
-                } else {
-                    // Player gets hit
-                    player.isAlive = false;
-                }
+                    platformIndex: platforms.indexOf(platform)
+                }));
             }
         });
     }
-
-    draw(ctx, cameraX) {
+    
+    /**
+     * Update all enemies
+     * @param {Array} platforms - Game platforms
+     * @param {Array} obstacles - Game obstacles
+     * @param {Object} player - Player object
+     * @param {number} gravity - Current gravity value
+     * @param {number} canvasHeight - Canvas height
+     * @param {number} bossAreaStart - X position where boss area starts
+     */
+    update(platforms, obstacles, player, gravity, canvasHeight, bossAreaStart) {
         this.enemies.forEach(enemy => {
-            if (!enemy.active) return;
-            
-            const screenX = enemy.x - cameraX;
-            
-            // Skip if off-screen
-            if (screenX + enemy.width < 0 || screenX > CONFIG.canvas.width) return;
-            
-            // Draw the entire enemy sprite
-            try {
-                ctx.drawImage(
-                    this.gameState.assets.strawberry.img,
-                    screenX, enemy.y, enemy.width, enemy.height
-                );
-            } catch (e) {
-                console.error("Error drawing enemy:", e);
-                // Fallback to a simple red circle if image fails
-                ctx.fillStyle = '#FF0033';
-                ctx.beginPath();
-                ctx.arc(screenX + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            enemy.update(platforms, obstacles, player, gravity, canvasHeight, bossAreaStart);
+        });
+    }
+    
+    /**
+     * Draw all enemies
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {number} cameraX - Camera X position
+     * @param {Object} assets - Game assets
+     * @param {number} currentLevel - Current level
+     */
+    draw(ctx, cameraX, assets, currentLevel) {
+        this.enemies.forEach(enemy => {
+            enemy.draw(ctx, cameraX, assets, currentLevel);
         });
     }
 }
 
-export default EnemyManager;
+// Export the classes
+if (typeof window !== 'undefined') {
+    window.Enemy = Enemy;
+    window.EnemyManager = EnemyManager;
+}
