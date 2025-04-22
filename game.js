@@ -437,8 +437,8 @@ function initLevel() {
         const platformX = 500 + i * 200 + Math.random() * 100;
         const platformY = canvas.height - 40 - (Math.random() * 250 + 50);
         
-        // Don't place platforms in the boss area (x > 7500)
-        if (platformX < 7500) {
+        // STRICT CHECK: Don't place ANY platforms in or near the boss area
+        if (platformX < 7400) {  // Added buffer zone before boss area
             platforms.push({
                 x: platformX,
                 y: platformY,
@@ -453,13 +453,16 @@ function initLevel() {
                 const smallPlatformX = platformX + platformWidth/2 - smallPlatformWidth/2;
                 const smallPlatformY = platformY - Math.random() * 150 - 50;
                 
-                platforms.push({
-                    x: smallPlatformX,
-                    y: smallPlatformY,
-                    width: smallPlatformWidth,
-                    height: 20,
-                    type: 'platform'
-                });
+                // Double-check that even with offsets, the platform doesn't extend into boss area
+                if (smallPlatformX + smallPlatformWidth < 7400) {
+                    platforms.push({
+                        x: smallPlatformX,
+                        y: smallPlatformY,
+                        width: smallPlatformWidth,
+                        height: 20,
+                        type: 'platform'
+                    });
+                }
             }
         }
     }
@@ -478,8 +481,8 @@ function initLevel() {
         const obstacleX = 800 + i * 300 + Math.random() * 200;
         const obstacleY = canvas.height - 40 - obstacleHeight;
         
-        // Don't place obstacles in the boss area
-        if (obstacleX < 7500) {
+        // STRICT CHECK: Don't place obstacles in or near the boss area
+        if (obstacleX < 7400) {  // Added buffer zone before boss area
             obstacles.push({
                 x: obstacleX,
                 y: obstacleY,
@@ -508,8 +511,8 @@ function initLevel() {
     for (let i = 0; i < enemyCount; i++) {
         const enemyX = 600 + i * 250 + Math.random() * 100;
         
-        // IMPORTANT: Skip this iteration if the enemy would be in the boss area
-        if (enemyX >= 7500) {
+        // STRICT CHECK: Skip this iteration if the enemy would be in or near the boss area
+        if (enemyX >= 7400) {  // Added buffer zone before boss area
             continue;
         }
         
@@ -530,11 +533,11 @@ function initLevel() {
     const platformEnemyChance = currentLevel === 1 ? 0.1 : 0.4;
     
     // Filter platforms to only include those outside the boss area
-    const nonBossPlatforms = platforms.filter(platform => platform.x < 7500 || platform.type === 'ground');
+    const nonBossPlatforms = platforms.filter(platform => platform.x < 7400 || platform.type === 'ground');
     
     nonBossPlatforms.forEach((platform, index) => {
         // Skip ground platforms and platforms in boss area
-        if (platform.type === 'ground' || platform.x >= 7500) {
+        if (platform.type === 'ground' || platform.x >= 7400) {
             return;
         }
         
@@ -671,7 +674,7 @@ function updatePlayer() {
     // Check for collisions with platforms
     let onGround = false;
     platforms.forEach(platform => {
-        // Skip platform collision in boss area unless it's the ground platform
+        // Skip ALL non-ground platforms in boss area
         if (inBossArea && platform.type !== 'ground') {
             return;
         }
@@ -820,8 +823,8 @@ function updateEnemies() {
     enemies.forEach(enemy => {
         if (!enemy.active) return;
         
-        // Deactivate enemies that enter the boss area
-        if (enemy.x > 7500) {
+        // Deactivate enemies that enter the boss area or buffer zone
+        if (enemy.x > 7400) {
             enemy.active = false;
             return;
         }
@@ -877,8 +880,13 @@ function updateBoss() {
     boss.x += boss.velocityX;
     boss.y += boss.velocityY;
     
-    // Check for collisions with platforms
+    // Check for collisions with platforms - ONLY ground platforms in boss area
     platforms.forEach(platform => {
+        // Skip non-ground platforms in boss area
+        if (boss.x > 7500 && platform.type !== 'ground') {
+            return;
+        }
+        
         if (
             boss.y + boss.height > platform.y &&
             boss.y < platform.y + platform.height &&
@@ -931,7 +939,7 @@ function drawPlatforms() {
         if (screenX + platform.width < 0 || screenX > canvas.width) return;
         
         // Skip drawing non-ground platforms in boss area
-        if (platform.x > 7500 && platform.type !== 'ground') return;
+        if (platform.x > 7400 && platform.type !== 'ground') return;
         
         if (platform.type === 'ground') {
             // Draw ground with tiles
@@ -966,7 +974,7 @@ function drawObstacles() {
         if (screenX + obstacle.width < 0 || screenX > canvas.width) return;
         
         // Skip obstacles in boss area except for lava
-        if (obstacle.x > 7500 && obstacle.type !== 'lava') return;
+        if (obstacle.x > 7400 && obstacle.type !== 'lava') return;
         
         if (obstacle.type === 'lava') {
             // Draw lava with animation effect
@@ -1107,7 +1115,7 @@ function drawEnemies() {
         if (!enemy.active) return;
         
         // Skip enemies in boss area
-        if (enemy.x > 7500) return;
+        if (enemy.x > 7400) return;
         
         const screenX = enemy.x - cameraX;
         
