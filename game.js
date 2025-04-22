@@ -1393,21 +1393,14 @@ canvas.addEventListener('click', (e) => {
     }
 });
 
-// Event listeners
-startButton.addEventListener('click', () => {
-    if (!gameRunning) {
-        if (!levelSelectionMode) {
-            // Show level selection
-            levelSelectionMode = true;
-            showMessage("VOOO's Adventure");
-        } else {
-            // Start game with current level
-            levelSelectionMode = false;
-            initLevel();
-            gameRunning = true;
-            gameLoop();
-        }
+// Canvas click event for starting game
+canvas.addEventListener('click', () => {
+    if (!gameRunning && !levelSelectionMode) {
+        // Show level selection
+        levelSelectionMode = true;
+        showMessage("VOOO's Adventure");
     }
+});
 });
 
 // Handle mouse clicks for level selection
@@ -1659,12 +1652,4 @@ window.addEventListener('load', () => {
     
     // Load assets
     loadAssets();
-    
-    // Add click handler for starting the game from welcome screen
-    canvas.addEventListener('click', (e) => {
-        if (!gameRunning && !levelSelectionMode) {
-            levelSelectionMode = true;
-            showMessage("VOOO's Adventure");
-        }
-    });
 });
