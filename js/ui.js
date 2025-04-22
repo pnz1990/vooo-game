@@ -71,27 +71,30 @@ class UIManager {
         ctx.font = '22px Arial';
         ctx.fillText('Select a level:', ctx.canvas.width / 2, ctx.canvas.height / 2);
         
-        // Level 1 button - centered
-        const buttonWidth = 200;
+        // Button dimensions
+        const buttonWidth = 240;  // Wider buttons to fit text
         const buttonHeight = 40;
         const buttonY = ctx.canvas.height / 2 + 30;
         const buttonSpacing = 20;
         
         // Level 1 button
         ctx.fillStyle = currentLevel === 1 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(ctx.canvas.width / 2 - 100, buttonY, buttonWidth, buttonHeight);
+        ctx.fillRect(ctx.canvas.width / 2 - buttonWidth/2, buttonY, buttonWidth, buttonHeight);
+        
+        // Set smaller font for button text
+        ctx.font = '16px Arial';
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText('Level 1: Beginner', ctx.canvas.width / 2, buttonY + 25);
         
         // Level 2 button
         ctx.fillStyle = currentLevel === 2 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(ctx.canvas.width / 2 - 100, buttonY + buttonHeight + buttonSpacing, buttonWidth, buttonHeight);
+        ctx.fillRect(ctx.canvas.width / 2 - buttonWidth/2, buttonY + buttonHeight + buttonSpacing, buttonWidth, buttonHeight);
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText('Level 2: Lava Challenge', ctx.canvas.width / 2, buttonY + buttonHeight + buttonSpacing + 25);
         
         // Level 3 button
         ctx.fillStyle = currentLevel === 3 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(ctx.canvas.width / 2 - 100, buttonY + (buttonHeight + buttonSpacing) * 2, buttonWidth, buttonHeight);
+        ctx.fillRect(ctx.canvas.width / 2 - buttonWidth/2, buttonY + (buttonHeight + buttonSpacing) * 2, buttonWidth, buttonHeight);
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText('Level 3: Cherry Chaos', ctx.canvas.width / 2, buttonY + (buttonHeight + buttonSpacing) * 2 + 25);
         
