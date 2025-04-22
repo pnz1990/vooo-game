@@ -152,8 +152,9 @@ class Player {
      * @param {Object} boss - Boss object
      * @param {number} gravity - Current gravity value
      * @param {number} canvasHeight - Canvas height
+     * @param {Object} secondBoss - Second boss object (for level 4)
      */
-    update(keys, platforms, obstacles, boss, gravity, canvasHeight) {
+    update(keys, platforms, obstacles, boss, gravity, canvasHeight, secondBoss) {
         // Handle keyboard input for movement
         this.velocityX = 0;
         
@@ -221,6 +222,11 @@ class Player {
         // Check for collision with boss
         if (boss && boss.active) {
             this.checkBossCollision(boss);
+        }
+        
+        // Check for collision with second boss (for level 4)
+        if (secondBoss && secondBoss.active) {
+            this.checkBossCollision(secondBoss);
         }
     }
     

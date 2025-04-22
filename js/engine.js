@@ -125,6 +125,7 @@ class GameEngine {
         // Reset game state
         this.player = null;
         this.boss = null;
+        this.secondBoss = null;
         this.platforms = [];
         this.obstacles = [];
         this.cameraX = 0;
@@ -149,6 +150,13 @@ class GameEngine {
             
             // Create boss
             this.boss = new Boss(this.config, this.assetManager.assets);
+            
+            // For level 4, create a second boss
+            if (this.currentLevel === 4) {
+                this.secondBoss = new Boss(this.config, this.assetManager.assets, true);
+            } else {
+                this.secondBoss = null;
+            }
             
             // Create enemies
             this.enemyManager.createEnemies(
@@ -187,7 +195,8 @@ class GameEngine {
                 this.obstacles, 
                 this.boss, 
                 this.gravity, 
-                this.canvas.height
+                this.canvas.height,
+                this.secondBoss
             );
         }
         
@@ -208,6 +217,10 @@ class GameEngine {
             this.boss.update(this.platforms, this.gravity);
         }
         
+        // Update second boss (for level 4)
+        if (this.secondBoss) {
+            this.secondBoss.update(this.platforms, this.gravity);
+        }
         // Draw level elements
         this.levelManager.drawPlatforms(this.ctx, this.cameraX, this.assetManager.assets);
         this.levelManager.drawObstacles(this.ctx, this.cameraX, this.assetManager.assets);
@@ -238,6 +251,18 @@ class GameEngine {
             }
         }
         
+        // Draw second boss (for level 4)
+        if (this.secondBoss) {
+            this.secondBoss.draw(this.ctx, this.cameraX);
+            
+            // Draw second boss health bar if near boss
+            if (this.player && 
+                Math.abs(this.player.x - this.secondBoss.x) < 500 && 
+                this.secondBoss.active) {
+                this.secondBoss.drawHealthBar(this.ctx);
+            }
+        }
+        
         // Update camera position to follow player
         if (this.player) {
             if (this.player.x > this.canvas.width / 3 && 
@@ -257,6 +282,14 @@ class GameEngine {
             this.gameRunning = false;
             this.currentLevel = Math.min(this.currentLevel + 1, this.config.MAX_LEVEL);
             this.showMessage("Level Complete! Score: " + this.player.score);
+        }
+        
+        // For level 4, both bosses must be defeated
+        if (this.currentLevel === 4) {
+            this.bossDefeated = (this.boss && !this.boss.active) && 
+                               (this.secondBoss && !this.secondBoss.active);
+        } else {
+            this.bossDefeated = (this.boss && !this.boss.active);
         }
         
         // Check if player is alive

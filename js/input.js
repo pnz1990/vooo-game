@@ -73,6 +73,8 @@ class InputManager {
                 if (this.onLevelSelect) this.onLevelSelect(2);
             } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
                 if (this.onLevelSelect) this.onLevelSelect(3);
+            } else if (e.code === 'Digit4' || e.code === 'Numpad4') {
+                if (this.onLevelSelect) this.onLevelSelect(4);
             }
             
             // Handle jump key press

@@ -98,10 +98,16 @@ class UIManager {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText('Level 3: Cherry Chaos', ctx.canvas.width / 2, buttonY + (buttonHeight + buttonSpacing) * 2 + 25);
         
+        // Level 4 button
+        ctx.fillStyle = currentLevel === 4 ? '#4CAF50' : '#3498db';
+        ctx.fillRect(ctx.canvas.width / 2 - buttonWidth/2, buttonY + (buttonHeight + buttonSpacing) * 3, buttonWidth, buttonHeight);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('Level 4: Ultimate Challenge', ctx.canvas.width / 2, buttonY + (buttonHeight + buttonSpacing) * 3 + 25);
+        
         // Instructions
         ctx.font = '14px Arial';
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Click on a level to start, or press 1-3 on keyboard', ctx.canvas.width / 2, buttonY + (buttonHeight + buttonSpacing) * 3);
+        ctx.fillText('Click on a level to start, or press 1-4 on keyboard', ctx.canvas.width / 2, buttonY + (buttonHeight + buttonSpacing) * 4);
     }
     
     /**

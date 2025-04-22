@@ -16,14 +16,16 @@ const CONFIG = {
     // Level configuration
     LEVEL_1_SPEED_MULTIPLIER: 0.85, // 15% slower
     LEVEL_SPEED_INCREMENT: 0.1,     // 10% faster per level
-    MAX_LEVEL: 3,
+    MAX_LEVEL: 4,
     
     // Enemy configuration
     LEVEL_1_ENEMY_COUNT: 8,
     BASE_ENEMY_COUNT: 30,
+    LEVEL_4_ENEMY_COUNT: 45,
     LEVEL_1_PLATFORM_ENEMY_CHANCE: 0.1,
     LEVEL_2_PLATFORM_ENEMY_CHANCE: 0.4,
     LEVEL_3_PLATFORM_ENEMY_CHANCE: 0.5,
+    LEVEL_4_PLATFORM_ENEMY_CHANCE: 0.6,
     
     // Player configuration
     STARTING_LIVES: 3,

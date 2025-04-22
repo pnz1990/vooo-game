@@ -8,19 +8,22 @@ class Boss {
      * Create a new Boss
      * @param {Object} config - Game configuration
      * @param {Object} assets - Game assets
+     * @param {boolean} isSecondBoss - Whether this is the second boss (for level 4)
      */
-    constructor(config, assets) {
+    constructor(config, assets, isSecondBoss = false) {
         this.config = config;
         this.assets = assets;
+        this.isSecondBoss = isSecondBoss;
         
         // Calculate speed based on current level
         const speedMultiplier = this.getCurrentSpeedMultiplier();
         
-        this.x = 7800;
+        // Position the boss - second boss is positioned differently
+        this.x = isSecondBoss ? 8000 : 7800;
         this.y = 0;
         this.width = assets.boss.width;
         this.height = assets.boss.height;
-        this.velocityX = config.BASE_BOSS_VELOCITY * speedMultiplier;
+        this.velocityX = config.BASE_BOSS_VELOCITY * speedMultiplier * (isSecondBoss ? -1 : 1);
         this.velocityY = 0;
         this.active = true;
         this.hits = 0;
@@ -142,7 +145,7 @@ class Boss {
             this.y,
             this.width,
             this.height,
-            this.velocityX < 0
+            this.velocityX < 0 || this.isSecondBoss
         );
     }
     

@@ -37,6 +37,11 @@ class Enemy {
     update(platforms, obstacles, player, gravity, canvasHeight, bossAreaStart) {
         if (!this.active) return;
         
+        // Safety check: ensure required parameters exist
+        if (!platforms || !obstacles || !canvasHeight || !bossAreaStart) {
+            return;
+        }
+        
         // Deactivate enemies that enter the boss area or buffer zone
         if (this.x > bossAreaStart) {
             this.active = false;
@@ -70,8 +75,10 @@ class Enemy {
             }
         });
         
-        // Check collision with player
-        this.checkPlayerCollision(player);
+        // Check collision with player only if player exists
+        if (player && typeof player === 'object') {
+            this.checkPlayerCollision(player);
+        }
     }
     
     /**
@@ -145,9 +152,14 @@ class Enemy {
      * @param {Object} player - Player object
      */
     checkPlayerCollision(player) {
+        // Safety check: ensure player exists and is valid
+        if (!player || typeof player !== 'object') {
+            return;
+        }
+        
         const { checkCollision } = window.GameUtils;
         
-        if (!player.invulnerable && this.active &&
+        if (this.active && !player.invulnerable &&
             checkCollision(
                 player,
                 this,
@@ -183,28 +195,27 @@ class Enemy {
         // Skip if off-screen
         if (screenX + this.width < 0 || screenX > ctx.canvas.width) return;
         
-        // For level 3 (cherry enemies), flip based on direction
+        // Choose enemy type based on level
+        let enemyImage;
         if (currentLevel === 3) {
-            safeDrawImage(
-                ctx,
-                assets.strawberry.img,
-                screenX,
-                this.y,
-                this.width,
-                this.height,
-                this.velocityX < 0
-            );
+            enemyImage = assets.cherry.img;
+        } else if (currentLevel === 4) {
+            // For level 4, randomly choose between strawberry and cherry
+            enemyImage = Math.random() > 0.5 ? assets.strawberry.img : assets.cherry.img;
         } else {
-            // Regular drawing for other levels
-            safeDrawImage(
-                ctx,
-                assets.strawberry.img,
-                screenX,
-                this.y,
-                this.width,
-                this.height
-            );
+            enemyImage = assets.strawberry.img;
         }
+        
+        // Draw the enemy with flipping based on direction
+        safeDrawImage(
+            ctx,
+            enemyImage,
+            screenX,
+            this.y,
+            this.width,
+            this.height,
+            this.velocityX < 0
+        );
     }
 }
 
@@ -239,6 +250,8 @@ class EnemyManager {
             enemyCount = Math.floor(this.config.BASE_ENEMY_COUNT * 1.1);
         } else if (currentLevel === 3) {
             enemyCount = Math.floor(this.config.BASE_ENEMY_COUNT * 1.2);
+        } else if (currentLevel === 4) {
+            enemyCount = this.config.LEVEL_4_ENEMY_COUNT;
         } else {
             enemyCount = Math.floor(this.config.BASE_ENEMY_COUNT * (1 + (currentLevel - 2) * 0.15));
         }
@@ -286,6 +299,10 @@ class EnemyManager {
             platformEnemyChance = this.config.LEVEL_1_PLATFORM_ENEMY_CHANCE;
         } else if (currentLevel === 2) {
             platformEnemyChance = this.config.LEVEL_2_PLATFORM_ENEMY_CHANCE;
+        } else if (currentLevel === 3) {
+            platformEnemyChance = this.config.LEVEL_3_PLATFORM_ENEMY_CHANCE;
+        } else if (currentLevel === 4) {
+            platformEnemyChance = this.config.LEVEL_4_PLATFORM_ENEMY_CHANCE;
         } else {
             platformEnemyChance = this.config.LEVEL_3_PLATFORM_ENEMY_CHANCE;
         }
@@ -322,6 +339,11 @@ class EnemyManager {
      * @param {number} bossAreaStart - X position where boss area starts
      */
     update(platforms, obstacles, player, gravity, canvasHeight, bossAreaStart) {
+        // Safety check: ensure player exists before updating enemies
+        if (!player || typeof player !== 'object') {
+            return;
+        }
+        
         this.enemies.forEach(enemy => {
             enemy.update(platforms, obstacles, player, gravity, canvasHeight, bossAreaStart);
         });
