@@ -13,7 +13,7 @@ let gameRunning = false;
 let score = 0;
 let lives = 3;
 let currentLevel = 1;
-let maxLevel = 2; // Maximum available level
+let maxLevel = 3; // Maximum available level (updated to 3)
 let speedMultiplier = 0.85; // Level 1: 15% slower (0.85)
 let gravity = 0.46; // Base gravity value
 let keys = {};
@@ -140,17 +140,25 @@ function loadAssets() {
     assets.vooo.jumping = new Image();
     assets.vooo.jumping.src = 'jumping.png';
     
-    // Load strawberry enemies sprite
+    // Load enemies sprite based on level
     assets.strawberry.img = new Image();
-    assets.strawberry.img.src = 'enemies.png';
+    if (currentLevel === 3) {
+        assets.strawberry.img.src = 'cherry-enemies.png';
+    } else {
+        assets.strawberry.img.src = 'enemies.png';
+    }
     
     // Make enemies bigger for better visibility
     assets.strawberry.width = 60;
     assets.strawberry.height = 60;
     
-    // Load boss sprite
+    // Load boss sprite based on level
     assets.boss.img = new Image();
-    assets.boss.img.src = 'boss.png';
+    if (currentLevel === 3) {
+        assets.boss.img.src = 'cherry-boss.png';
+    } else {
+        assets.boss.img.src = 'boss.png';
+    }
     
     // Make boss bigger for better visibility
     assets.boss.width = 120;
@@ -373,12 +381,15 @@ function initLevel() {
     // Reset boss
     boss.x = 7800;
     boss.y = 0;
-    boss.velocityX = 1.725;
+    boss.velocityX = 1.725 * speedMultiplier;
     boss.velocityY = 0;
     boss.active = true;
     boss.hits = 0;
     boss.invulnerable = false;
     boss.invulnerableTimer = 0;
+    
+    // Load appropriate assets for the current level
+    loadAssets();
     
     // Create ground platform with gaps for lava in level 2+
     if (currentLevel === 1) {
@@ -525,6 +536,7 @@ function initLevel() {
     enemies = [];
     // Fewer enemies in level 1, more in higher levels
     // Level 2 has 10% more enemies than the base amount
+    // Level 3 has 20% more enemies than the base amount
     const baseEnemyCount = 30;
     let enemyCount;
     
@@ -532,6 +544,8 @@ function initLevel() {
         enemyCount = 8; // Level 1: Few enemies
     } else if (currentLevel === 2) {
         enemyCount = Math.floor(baseEnemyCount * 1.1); // Level 2: 10% more than base
+    } else if (currentLevel === 3) {
+        enemyCount = Math.floor(baseEnemyCount * 1.2); // Level 3: 20% more than base
     } else {
         enemyCount = Math.floor(baseEnemyCount * (1 + (currentLevel - 2) * 0.15)); // Higher levels: Even more
     }
@@ -558,7 +572,8 @@ function initLevel() {
     }
     
     // Add some enemies on platforms - fewer in level 1
-    const platformEnemyChance = currentLevel === 1 ? 0.1 : 0.4;
+    const platformEnemyChance = currentLevel === 1 ? 0.1 : 
+                               (currentLevel === 3 ? 0.5 : 0.4); // Level 3 has more platform enemies
     
     // Filter platforms to only include those outside the boss area
     const nonBossPlatforms = platforms.filter(platform => platform.x < 7400 || platform.type === 'ground');
@@ -1358,10 +1373,16 @@ function showMessage(text) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText('Level 2: Lava Challenge', canvas.width / 2, canvas.height / 2 + 95);
         
+        // Level 3 button
+        ctx.fillStyle = currentLevel === 3 ? '#4CAF50' : '#3498db';
+        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 120, 200, 40);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('Level 3: Cherry Chaos', canvas.width / 2, canvas.height / 2 + 145);
+        
         // Instructions
         ctx.font = '14px Arial';
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Click on a level to start, or press 1-2 on keyboard', canvas.width / 2, canvas.height / 2 + 130);
+        ctx.fillText('Click on a level to start, or press 1-3 on keyboard', canvas.width / 2, canvas.height / 2 + 180);
     } else {
         // Regular game message
         ctx.font = '18px Arial';
@@ -1385,6 +1406,9 @@ function showMessage(text) {
         if (currentLevel === 2) {
             ctx.fillStyle = '#FF4500';
             ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', canvas.width / 2, canvas.height / 2 + 120);
+        } else if (currentLevel === 3) {
+            ctx.fillStyle = '#FF0066';
+            ctx.fillText('LEVEL 3: Cherry Chaos - Beware the cherry enemies!', canvas.width / 2, canvas.height / 2 + 120);
         }
     }
 }
@@ -1416,6 +1440,19 @@ canvas.addEventListener('click', (e) => {
             mouseY <= canvas.height / 2 + 110) {
             
             currentLevel = 2;
+            levelSelectionMode = false;
+            initLevel();
+            gameRunning = true;
+            gameLoop();
+        }
+        
+        // Check if clicked on level 3 button
+        if (mouseX >= canvas.width / 2 - 100 && 
+            mouseX <= canvas.width / 2 + 100 && 
+            mouseY >= canvas.height / 2 + 120 && 
+            mouseY <= canvas.height / 2 + 160) {
+            
+            currentLevel = 3;
             levelSelectionMode = false;
             initLevel();
             gameRunning = true;
@@ -1530,6 +1567,12 @@ window.addEventListener('keydown', (e) => {
                 gameLoop();
             } else if (e.code === 'Digit2' || e.code === 'Numpad2') {
                 currentLevel = 2;
+                levelSelectionMode = false;
+                initLevel();
+                gameRunning = true;
+                gameLoop();
+            } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
+                currentLevel = 3;
                 levelSelectionMode = false;
                 initLevel();
                 gameRunning = true;
