@@ -708,10 +708,10 @@ function updatePlayer() {
         }
         
         if (
-            player.y + player.height > platform.y &&
-            player.y < platform.y + platform.height &&
-            player.x + player.width > platform.x &&
-            player.x < platform.x + platform.width
+            player.y + player.height > platform.y + 5 &&
+            player.y < platform.y + platform.height - 5 &&
+            player.x + player.width - 5 > platform.x &&
+            player.x + 5 < platform.x + platform.width
         ) {
             // Collision from above (landing on platform)
             if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y) {
@@ -742,10 +742,10 @@ function updatePlayer() {
     // Check for collisions with obstacles
     obstacles.forEach(obstacle => {
         if (
-            player.y + player.height > obstacle.y &&
-            player.y < obstacle.y + obstacle.height &&
-            player.x + player.width > obstacle.x &&
-            player.x < obstacle.x + obstacle.width
+            player.y + player.height > obstacle.y + 5 &&  // Add 5px buffer at the top
+            player.y < obstacle.y + obstacle.height - 5 &&  // Add 5px buffer at the bottom
+            player.x + player.width - 5 > obstacle.x &&  // Add 5px buffer on the right
+            player.x + 5 < obstacle.x + obstacle.width  // Add 5px buffer on the left
         ) {
             // Handle lava collision - instant death
             if (obstacle.type === 'lava' && 
@@ -817,13 +817,13 @@ function updatePlayer() {
     
     // Check for collision with boss
     if (boss.active && !player.invulnerable && !boss.invulnerable &&
-        player.x < boss.x + boss.width &&
-        player.x + player.width > boss.x &&
-        player.y < boss.y + boss.height &&
-        player.y + player.height > boss.y
+        player.x + 5 < boss.x + boss.width - 5 &&
+        player.x + player.width - 5 > boss.x + 5 &&
+        player.y + 5 < boss.y + boss.height - 5 &&
+        player.y + player.height - 5 > boss.y + 5
     ) {
         // Check if player is jumping on boss from above
-        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= boss.y + boss.height/4) {
+        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= boss.y + boss.height/3) {
             // Hit boss
             boss.hits++;
             boss.invulnerable = true;
@@ -949,13 +949,13 @@ function updateEnemies() {
         // Check collision with player
         if (
             !player.invulnerable &&
-            player.x < enemy.x + enemy.width &&
-            player.x + player.width > enemy.x &&
-            player.y < enemy.y + enemy.height &&
-            player.y + player.height > enemy.y
+            player.x + 5 < enemy.x + enemy.width - 5 &&
+            player.x + player.width - 5 > enemy.x + 5 &&
+            player.y + 5 < enemy.y + enemy.height - 5 &&
+            player.y + player.height - 5 > enemy.y + 5
         ) {
             // Check if player is jumping on enemy from above
-            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= enemy.y) {
+            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= enemy.y + enemy.height/4) {
                 // Defeat enemy
                 enemy.active = false;
                 player.velocityY = player.jumpPower * 0.7; // Bounce
@@ -988,10 +988,10 @@ function updateBoss() {
         }
         
         if (
-            boss.y + boss.height > platform.y &&
-            boss.y < platform.y + platform.height &&
-            boss.x + boss.width > platform.x &&
-            boss.x < platform.x + platform.width
+            boss.y + boss.height > platform.y + 5 &&
+            boss.y < platform.y + platform.height - 5 &&
+            boss.x + boss.width - 5 > platform.x &&
+            boss.x + 5 < platform.x + platform.width
         ) {
             // Collision from above (landing on platform)
             if (boss.velocityY > 0 && boss.y + boss.height - boss.velocityY <= platform.y) {
