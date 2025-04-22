@@ -25,6 +25,10 @@ let bossDefeated = false;
 let doubleJumpEnabled = true; // Enable double jump feature
 let debugMode = false; // Disable debug information
 
+// Cheat code variables
+let cheatSequence = [];
+let cheatActivated = false;
+
 // Game assets
 const assets = {
     vooo: {
@@ -336,7 +340,7 @@ function loadAssets() {
 function initLevel() {
     // Reset game state
     score = 0;
-    lives = 3;
+    lives = cheatActivated ? 999 : 3; // Keep 999 lives if cheat is active
     cameraX = 0;
     bossHits = 0;
     bossDefeated = false;
@@ -1446,6 +1450,53 @@ window.addEventListener('keydown', (e) => {
     // Only register key press if it wasn't already pressed (prevents holding key to spam jump)
     if (!keys[e.code]) {
         keys[e.code] = true;
+        
+        // Check for cheat code (999)
+        if (e.code === 'Digit9' || e.code === 'Numpad9') {
+            cheatSequence.push('9');
+            
+            // Keep only the last 3 entries
+            if (cheatSequence.length > 3) {
+                cheatSequence.shift();
+            }
+            
+            // Check if the sequence is "999"
+            if (cheatSequence.length === 3 && 
+                cheatSequence[0] === '9' && 
+                cheatSequence[1] === '9' && 
+                cheatSequence[2] === '9' && 
+                !cheatActivated) {
+                
+                // Activate cheat: 999 lives
+                lives = 999;
+                updateLivesDisplay();
+                cheatActivated = true;
+                
+                // Show cheat activated message
+                const cheatMessage = document.createElement('div');
+                cheatMessage.textContent = '🎮 CHEAT ACTIVATED: 999 LIVES! 🎮';
+                cheatMessage.style.position = 'absolute';
+                cheatMessage.style.top = '100px';
+                cheatMessage.style.left = '50%';
+                cheatMessage.style.transform = 'translateX(-50%)';
+                cheatMessage.style.backgroundColor = 'rgba(255, 215, 0, 0.8)';
+                cheatMessage.style.color = '#FF0000';
+                cheatMessage.style.padding = '10px 20px';
+                cheatMessage.style.borderRadius = '5px';
+                cheatMessage.style.fontWeight = 'bold';
+                cheatMessage.style.fontSize = '20px';
+                cheatMessage.style.zIndex = '1000';
+                document.body.appendChild(cheatMessage);
+                
+                // Remove the message after 3 seconds
+                setTimeout(() => {
+                    document.body.removeChild(cheatMessage);
+                }, 3000);
+            }
+        } else {
+            // Reset cheat sequence if any other key is pressed
+            cheatSequence = [];
+        }
         
         // Level selection with number keys
         if (levelSelectionMode && !gameRunning) {
