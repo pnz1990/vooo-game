@@ -399,40 +399,65 @@ function initLevel() {
             if (currentX < 500) {
                 // Safe starting area
                 segmentLength = 500;
+                
+                // Add ground segment
+                platforms.push({
+                    x: currentX,
+                    y: canvas.height - 40,
+                    width: segmentLength,
+                    height: 40,
+                    type: 'ground'
+                });
+                
+                currentX += segmentLength;
             } else if (currentX > 7400) { // Match buffer zone
                 // Safe boss area
                 segmentLength = 8000 - currentX;
+                
+                // Add ground segment
+                platforms.push({
+                    x: currentX,
+                    y: canvas.height - 40,
+                    width: segmentLength,
+                    height: 40,
+                    type: 'ground'
+                });
+                
+                currentX += segmentLength;
             } else {
                 // Random segment length between 200-500
                 segmentLength = Math.random() * 300 + 200;
                 
-                // Add lava gap after this segment
-                const gapLength = Math.random() * 100 + 80;
-                
-                // Add lava obstacle IN THE GAP (not on top of ground)
-                obstacles.push({
-                    x: currentX + segmentLength,
-                    y: canvas.height - 40, // Align with bottom of screen
-                    width: gapLength,
-                    height: 40, // Match the height of the ground platforms
-                    type: 'lava'
+                // Add ground segment
+                platforms.push({
+                    x: currentX,
+                    y: canvas.height - 40,
+                    width: segmentLength,
+                    height: 40,
+                    type: 'ground'
                 });
                 
-                // Skip the gap for next ground segment
-                currentX += gapLength;
+                currentX += segmentLength;
+                
+                // Add lava gap after this segment (only if not near boss area)
+                if (currentX < 7300) {
+                    const gapLength = Math.random() * 100 + 80;
+                    
+                    // Add lava obstacle IN THE GAP
+                    obstacles.push({
+                        x: currentX,
+                        y: canvas.height - 40, // Align with bottom of screen
+                        width: gapLength,
+                        height: 40, // Match the height of the ground platforms
+                        type: 'lava'
+                    });
+                    
+                    // Skip the gap for next ground segment
+                    currentX += gapLength;
+                }
             }
-            
-            // Add ground segment
-            platforms.push({
-                x: currentX,
-                y: canvas.height - 40,
-                width: segmentLength,
-                height: 40,
-                type: 'ground'
-            });
-            
-            currentX += segmentLength;
         }
+    }
     }
     
     // Add platforms - more of them and more varied
