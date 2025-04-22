@@ -48,11 +48,11 @@ class UIManager {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        // Main title - smaller font
+        // Main title - larger font and centered
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = '24px Arial';
+        ctx.font = '32px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(text, ctx.canvas.width / 2, ctx.canvas.height / 2 - 50);
+        ctx.fillText(text, ctx.canvas.width / 2, ctx.canvas.height / 2 - 80);
         
         if (levelSelectionMode) {
             this.drawLevelSelection(ctx, currentLevel);
@@ -68,31 +68,37 @@ class UIManager {
      */
     drawLevelSelection(ctx, currentLevel) {
         // Level selection instructions
-        ctx.font = '18px Arial';
-        ctx.fillText('Select a level:', ctx.canvas.width / 2, ctx.canvas.height / 2 - 10);
+        ctx.font = '22px Arial';
+        ctx.fillText('Select a level:', ctx.canvas.width / 2, ctx.canvas.height / 2);
+        
+        // Level 1 button - centered
+        const buttonWidth = 200;
+        const buttonHeight = 40;
+        const buttonY = ctx.canvas.height / 2 + 30;
+        const buttonSpacing = 20;
         
         // Level 1 button
         ctx.fillStyle = currentLevel === 1 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(ctx.canvas.width / 2 - 100, ctx.canvas.height / 2 + 20, 200, 40);
+        ctx.fillRect(ctx.canvas.width / 2 - 100, buttonY, buttonWidth, buttonHeight);
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Level 1: Beginner', ctx.canvas.width / 2, ctx.canvas.height / 2 + 45);
+        ctx.fillText('Level 1: Beginner', ctx.canvas.width / 2, buttonY + 25);
         
         // Level 2 button
         ctx.fillStyle = currentLevel === 2 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(ctx.canvas.width / 2 - 100, ctx.canvas.height / 2 + 70, 200, 40);
+        ctx.fillRect(ctx.canvas.width / 2 - 100, buttonY + buttonHeight + buttonSpacing, buttonWidth, buttonHeight);
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Level 2: Lava Challenge', ctx.canvas.width / 2, ctx.canvas.height / 2 + 95);
+        ctx.fillText('Level 2: Lava Challenge', ctx.canvas.width / 2, buttonY + buttonHeight + buttonSpacing + 25);
         
         // Level 3 button
         ctx.fillStyle = currentLevel === 3 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(ctx.canvas.width / 2 - 100, ctx.canvas.height / 2 + 120, 200, 40);
+        ctx.fillRect(ctx.canvas.width / 2 - 100, buttonY + (buttonHeight + buttonSpacing) * 2, buttonWidth, buttonHeight);
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Level 3: Cherry Chaos', ctx.canvas.width / 2, ctx.canvas.height / 2 + 145);
+        ctx.fillText('Level 3: Cherry Chaos', ctx.canvas.width / 2, buttonY + (buttonHeight + buttonSpacing) * 2 + 25);
         
         // Instructions
         ctx.font = '14px Arial';
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Click on a level to start, or press 1-3 on keyboard', ctx.canvas.width / 2, ctx.canvas.height / 2 + 180);
+        ctx.fillText('Click on a level to start, or press 1-3 on keyboard', ctx.canvas.width / 2, buttonY + (buttonHeight + buttonSpacing) * 3);
     }
     
     /**
@@ -103,31 +109,33 @@ class UIManager {
      * @param {number} speedMultiplier - Current speed multiplier
      */
     drawGameMessage(ctx, bossDefeated, currentLevel, speedMultiplier) {
+        const centerY = ctx.canvas.height / 2;
+        
         // Regular game message
-        ctx.font = '18px Arial';
-        ctx.fillText('Click anywhere to play', ctx.canvas.width / 2, ctx.canvas.height / 2 + 20);
+        ctx.font = '22px Arial';
+        ctx.fillText('Click anywhere to play', ctx.canvas.width / 2, centerY);
         
         // Controls info - condensed to one line, smaller font
-        ctx.font = '14px Arial';
-        ctx.fillText('Controls: WASD/Arrows to move, Space/W/Up to double jump', ctx.canvas.width / 2, ctx.canvas.height / 2 + 50);
+        ctx.font = '16px Arial';
+        ctx.fillText('Controls: WASD/Arrows to move, Space/W/Up to double jump', ctx.canvas.width / 2, centerY + 40);
         
         if (bossDefeated) {
             ctx.fillStyle = '#FFFF00';
-            ctx.fillText('Boss defeated! Congratulations!', ctx.canvas.width / 2, ctx.canvas.height / 2 + 80);
+            ctx.fillText('Boss defeated! Congratulations!', ctx.canvas.width / 2, centerY + 80);
             
             if (currentLevel > 1) {
                 ctx.fillStyle = '#00FF00';
-                ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', ctx.canvas.width / 2, ctx.canvas.height / 2 + 100);
+                ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', ctx.canvas.width / 2, centerY + 110);
             }
         }
         
         // Level-specific info
         if (currentLevel === 2) {
             ctx.fillStyle = '#FF4500';
-            ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', ctx.canvas.width / 2, ctx.canvas.height / 2 + 120);
+            ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', ctx.canvas.width / 2, centerY + 140);
         } else if (currentLevel === 3) {
             ctx.fillStyle = '#FF0066';
-            ctx.fillText('LEVEL 3: Cherry Chaos - Beware the cherry enemies!', ctx.canvas.width / 2, ctx.canvas.height / 2 + 120);
+            ctx.fillText('LEVEL 3: Cherry Chaos - Beware the cherry enemies!', ctx.canvas.width / 2, centerY + 140);
         }
     }
     
