@@ -437,38 +437,35 @@ function initLevel() {
         const platformX = 500 + i * 200 + Math.random() * 100;
         const platformY = canvas.height - 40 - (Math.random() * 250 + 50);
         
-        platforms.push({
-            x: platformX,
-            y: platformY,
-            width: platformWidth,
-            height: 20,
-            type: 'platform'
-        });
-        
-        // Add some floating smaller platforms
-        if (Math.random() > 0.6) {
-            const smallPlatformWidth = Math.random() * 100 + 50;
-            const smallPlatformX = platformX + platformWidth/2 - smallPlatformWidth/2;
-            const smallPlatformY = platformY - Math.random() * 150 - 50;
-            
+        // Don't place platforms in the boss area (x > 7500)
+        if (platformX < 7500) {
             platforms.push({
-                x: smallPlatformX,
-                y: smallPlatformY,
-                width: smallPlatformWidth,
+                x: platformX,
+                y: platformY,
+                width: platformWidth,
                 height: 20,
                 type: 'platform'
             });
+            
+            // Add some floating smaller platforms
+            if (Math.random() > 0.6) {
+                const smallPlatformWidth = Math.random() * 100 + 50;
+                const smallPlatformX = platformX + platformWidth/2 - smallPlatformWidth/2;
+                const smallPlatformY = platformY - Math.random() * 150 - 50;
+                
+                platforms.push({
+                    x: smallPlatformX,
+                    y: smallPlatformY,
+                    width: smallPlatformWidth,
+                    height: 20,
+                    type: 'platform'
+                });
+            }
         }
     }
     
     // Add a special platform for the boss battle
-    platforms.push({
-        x: 7700,
-        y: canvas.height - 40 - 150,
-        width: 400,
-        height: 20,
-        type: 'platform'
-    });
+    // Removed the special platform for boss battle to make it a clean arena
     
     // Add obstacles
     if (!obstacles) obstacles = [];
@@ -657,9 +654,17 @@ function updatePlayer() {
         player.x = 0;
     }
     
+    // Check if player is in boss area (x position > 7500)
+    const inBossArea = player.x > 7500;
+    
     // Check for collisions with platforms
     let onGround = false;
     platforms.forEach(platform => {
+        // Skip platform collision in boss area unless it's the ground platform
+        if (inBossArea && platform.type !== 'ground') {
+            return;
+        }
+        
         if (
             player.y + player.height > platform.y &&
             player.y < platform.y + platform.height &&
@@ -804,6 +809,12 @@ function updateEnemies() {
     enemies.forEach(enemy => {
         if (!enemy.active) return;
         
+        // Deactivate enemies that enter the boss area
+        if (enemy.x > 7500) {
+            enemy.active = false;
+            return;
+        }
+        
         // Move enemy
         enemy.x += enemy.velocityX;
         
@@ -908,6 +919,9 @@ function drawPlatforms() {
         // Skip if off-screen
         if (screenX + platform.width < 0 || screenX > canvas.width) return;
         
+        // Skip drawing non-ground platforms in boss area
+        if (platform.x > 7500 && platform.type !== 'ground') return;
+        
         if (platform.type === 'ground') {
             // Draw ground with tiles
             for (let x = 0; x < platform.width; x += assets.tiles.size) {
@@ -939,6 +953,9 @@ function drawObstacles() {
         
         // Skip if off-screen
         if (screenX + obstacle.width < 0 || screenX > canvas.width) return;
+        
+        // Skip obstacles in boss area except for lava
+        if (obstacle.x > 7500 && obstacle.type !== 'lava') return;
         
         if (obstacle.type === 'lava') {
             // Draw lava with animation effect
@@ -1077,6 +1094,9 @@ function drawPlayer() {
 function drawEnemies() {
     enemies.forEach(enemy => {
         if (!enemy.active) return;
+        
+        // Skip enemies in boss area
+        if (enemy.x > 7500) return;
         
         const screenX = enemy.x - cameraX;
         
