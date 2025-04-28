@@ -1,108 +1,74 @@
-// effects.js - Visual effects for the game
+/**
+ * Visual effects for the game
+ */
 
 /**
- * EffectsManager class for creating and managing visual effects
+ * Creates a particle effect for double jump
+ * @param {Object} player - The player object
+ * @param {number} cameraX - Current camera X position
+ * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
  */
-class EffectsManager {
-    /**
-     * Create a new EffectsManager
-     * @param {Object} config - Game configuration
-     */
-    constructor(config) {
-        this.config = config;
-        this.effects = [];
-    }
+export function createDoubleJumpEffect(player, cameraX, ctx) {
+    // Create particles for double jump effect
+    const particleCount = 15;
+    const particles = [];
     
-    /**
-     * Create a double jump effect
-     * @param {number} x - X position
-     * @param {number} y - Y position
-     * @param {Function} drawCallback - Function to draw particles
-     */
-    createDoubleJumpEffect(x, y, drawCallback) {
-        const { createParticleEffect } = window.GameUtils;
+    for (let i = 0; i < particleCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 3 + 2;
+        const size = Math.random() * 5 + 3;
         
-        createParticleEffect({
-            x: x,
-            y: y,
-            count: 15,
+        particles.push({
+            x: player.x + player.width / 2,
+            y: player.y + player.height,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: size,
             color: '#FFFFFF',
-            speed: 3,
-            life: 20,
-            drawCallback: drawCallback
+            life: 20
         });
     }
     
-    /**
-     * Create an enemy defeat effect
-     * @param {number} x - X position
-     * @param {number} y - Y position
-     * @param {string} color - Particle color
-     * @param {Function} drawCallback - Function to draw particles
-     */
-    createEnemyDefeatEffect(x, y, color, drawCallback) {
-        const { createParticleEffect } = window.GameUtils;
+    // Animate particles
+    function animateParticles() {
+        if (particles.length === 0) return;
         
-        createParticleEffect({
-            x: x,
-            y: y,
-            count: 20,
-            color: color || '#FF0000',
-            speed: 4,
-            life: 30,
-            drawCallback: drawCallback
-        });
+        // Update and draw particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            
+            // Update position
+            p.x += p.vx;
+            p.y += p.vy;
+            
+            // Apply gravity
+            p.vy += 0.1;
+            
+            // Decrease life
+            p.life--;
+            
+            // Remove dead particles
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+                continue;
+            }
+            
+            // Draw particle
+            const screenX = p.x - cameraX;
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life / 20;
+            ctx.beginPath();
+            ctx.arc(screenX, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+        
+        // Continue animation if particles remain
+        if (particles.length > 0) {
+            requestAnimationFrame(animateParticles);
+        }
     }
     
-    /**
-     * Create a boss hit effect
-     * @param {number} x - X position
-     * @param {number} y - Y position
-     * @param {Function} drawCallback - Function to draw particles
-     */
-    createBossHitEffect(x, y, drawCallback) {
-        const { createParticleEffect } = window.GameUtils;
-        
-        createParticleEffect({
-            x: x,
-            y: y,
-            count: 30,
-            color: '#FFFF00',
-            speed: 5,
-            life: 40,
-            drawCallback: drawCallback
-        });
-    }
-    
-    /**
-     * Create a level complete effect
-     * @param {number} x - X position
-     * @param {number} y - Y position
-     * @param {Function} drawCallback - Function to draw particles
-     */
-    createLevelCompleteEffect(x, y, drawCallback) {
-        const { createParticleEffect } = window.GameUtils;
-        
-        // Create multiple particle bursts with different colors
-        const colors = ['#FFFF00', '#00FF00', '#00FFFF', '#FF00FF'];
-        
-        colors.forEach((color, index) => {
-            setTimeout(() => {
-                createParticleEffect({
-                    x: x,
-                    y: y,
-                    count: 40,
-                    color: color,
-                    speed: 6,
-                    life: 60,
-                    drawCallback: drawCallback
-                });
-            }, index * 200); // Stagger the effects
-        });
-    }
-}
-
-// Export the EffectsManager class
-if (typeof window !== 'undefined') {
-    window.EffectsManager = EffectsManager;
+    // Start animation
+    animateParticles();
 }

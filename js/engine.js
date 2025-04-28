@@ -1,351 +1,221 @@
-// engine.js - Game engine and main loop
-
 /**
- * GameEngine class for managing the game loop and state
+ * VOOO's Adventure Game - Game Engine
+ * Core game engine functionality
  */
-class GameEngine {
+
+// Game engine namespace
+const Engine = {
+    // Canvas and context
+    canvas: null,
+    ctx: null,
+    
+    // Game state
+    gameRunning: false,
+    currentLevel: 1,
+    maxLevel: 2,
+    score: 0,
+    lives: 3,
+    
+    // Physics constants
+    baseGravity: 0.46,
+    gravity: 0.46,
+    speedMultiplier: 0.85,
+    
+    // Camera
+    cameraX: 0,
+    
+    // Input tracking
+    keys: {},
+    
     /**
-     * Create a new GameEngine
-     * @param {Object} config - Game configuration
+     * Initialize the game engine
      */
-    constructor(config) {
-        this.config = config;
+    init: function() {
+        // Set up canvas
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         
         // Set canvas size
-        this.canvas.width = config.CANVAS_WIDTH;
-        this.canvas.height = config.CANVAS_HEIGHT;
+        this.canvas.width = 800;
+        this.canvas.height = 500;
         
-        // Game state
-        this.gameRunning = false;
-        this.levelSelectionMode = false;
-        this.currentLevel = 1;
-        this.lives = config.STARTING_LIVES;
-        this.cameraX = 0;
-        this.bossDefeated = false;
-        this.doubleJumpEnabled = true;
+        // Initialize UI
+        UI.init();
         
-        // Initialize managers
-        this.assetManager = new AssetManager(config);
-        this.inputManager = new InputManager();
-        this.levelManager = new LevelManager(config);
-        this.enemyManager = new EnemyManager(config);
-        this.uiManager = new UIManager(config);
-        this.effectsManager = new EffectsManager(config);
-        
-        // Game objects
-        this.player = null;
-        this.boss = null;
-        this.platforms = [];
-        this.obstacles = [];
-        this.levelEnd = null;
-        
-        // Calculate speed multiplier
-        this.speedMultiplier = this.getSpeedMultiplier();
-        this.gravity = config.BASE_GRAVITY * this.speedMultiplier;
-        
-        // Set up input handlers
-        this.setupInputHandlers();
-        
-        // Make the game instance globally available
-        window.game = this;
-    }
-    
-    /**
-     * Initialize the game
-     */
-    init() {
         // Load assets
-        this.assetManager.setLevel(this.currentLevel);
-        this.assetManager.loadAssets(() => {
-            // Show level selection when assets are loaded
-            this.levelSelectionMode = true;
-            this.showMessage("VOOO's Adventure");
+        Assets.loadAll(() => {
+            // Assets loaded, show start screen
+            UI.showStartScreen();
         });
         
-        // Initialize input
-        this.inputManager.init(this.canvas);
-        
-        // Add canvas click event for starting game
-        this.canvas.addEventListener('click', () => {
-            if (!this.gameRunning && !this.levelSelectionMode) {
-                // Show level selection
-                this.levelSelectionMode = true;
-                this.showMessage("VOOO's Adventure");
+        // Set up event listeners
+        this.setupEventListeners();
+    },
+    
+    /**
+     * Set up event listeners for keyboard and buttons
+     */
+    setupEventListeners: function() {
+        // Keyboard events
+        window.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+            
+            // Prevent scrolling with arrow keys and space
+            if(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                e.preventDefault();
+            }
+            
+            // Handle jump
+            if ((e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') && 
+                this.gameRunning && !Player.jumping) {
+                Player.jump();
             }
         });
-    }
+        
+        window.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
+        });
+        
+        // Start button
+        document.getElementById('startButton').addEventListener('click', () => {
+            if (!this.gameRunning) {
+                this.startGame();
+            }
+        });
+    },
     
     /**
-     * Set up input handlers
+     * Start a new game
      */
-    setupInputHandlers() {
-        // Jump handler
-        this.inputManager.onJump = () => {
-            if (this.gameRunning && this.player) {
-                this.player.jump(this.doubleJumpEnabled);
-            }
-        };
+    startGame: function() {
+        this.gameRunning = true;
+        this.score = 0;
+        this.lives = 3;
         
-        // Cheat activation handler
-        this.inputManager.onCheatActivated = () => {
-            this.lives = 999;
-            this.uiManager.updateLivesDisplay(this.lives);
-            this.uiManager.showCheatActivatedMessage();
-        };
+        // Update speed multiplier based on level
+        this.updateSpeedMultiplier();
         
-        // Level selection handler
-        this.inputManager.onLevelSelect = (level) => {
-            if (this.levelSelectionMode && !this.gameRunning) {
-                this.currentLevel = level;
-                this.levelSelectionMode = false;
-                this.initLevel();
-                // The gameLoop will be started after assets are loaded in initLevel()
-            }
-        };
-    }
+        // Initialize level
+        LevelManager.loadLevel(this.currentLevel);
+        
+        // Initialize player
+        Player.init();
+        
+        // Update UI
+        UI.updateScoreDisplay(this.score);
+        UI.updateLivesDisplay(this.lives);
+        
+        // Start game loop
+        this.gameLoop();
+    },
     
     /**
-     * Get speed multiplier based on current level
-     * @returns {number} - Speed multiplier
+     * Update speed multiplier based on current level
      */
-    getSpeedMultiplier() {
+    updateSpeedMultiplier: function() {
         if (this.currentLevel === 1) {
-            return this.config.LEVEL_1_SPEED_MULTIPLIER;
+            this.speedMultiplier = 0.85; // Level 1: 15% slower
         } else {
-            return 1 + ((this.currentLevel - 2) * this.config.LEVEL_SPEED_INCREMENT);
+            this.speedMultiplier = 1 + ((this.currentLevel - 2) * 0.1); // Increase by 10% per level after level 2
         }
-    }
-    
-    /**
-     * Initialize level
-     */
-    initLevel() {
-        // Reset game state
-        this.player = null;
-        this.boss = null;
-        this.secondBoss = null;
-        this.platforms = [];
-        this.obstacles = [];
-        this.cameraX = 0;
-        this.bossDefeated = false;
-        this.gameRunning = false; // Ensure game is not running until assets are loaded
         
-        // Set speed multiplier based on current level
-        this.speedMultiplier = this.getSpeedMultiplier();
-        this.gravity = this.config.BASE_GRAVITY * this.speedMultiplier;
-        
-        // Load assets for the current level
-        this.assetManager.setLevel(this.currentLevel);
-        this.assetManager.loadAssets(() => {
-            // Create level
-            const levelData = this.levelManager.createLevel(this.currentLevel);
-            this.platforms = levelData.platforms;
-            this.obstacles = levelData.obstacles;
-            this.levelEnd = levelData.levelEnd;
-            
-            // Create player
-            this.player = new Player(this.config, this.assetManager.assets);
-            
-            // Create boss
-            this.boss = new Boss(this.config, this.assetManager.assets);
-            
-            // For level 4, create a second boss
-            if (this.currentLevel === 4) {
-                this.secondBoss = new Boss(this.config, this.assetManager.assets, true);
-            } else {
-                this.secondBoss = null;
-            }
-            
-            // Create enemies
-            this.enemyManager.createEnemies(
-                this.currentLevel, 
-                this.platforms, 
-                this.config.BOSS_AREA_START
-            );
-            
-            // Update UI
-            this.uiManager.updateScoreDisplay(this.player.score, this.currentLevel);
-            this.uiManager.updateLivesDisplay(this.lives);
-            
-            // Now that everything is loaded and initialized, start the game
-            this.gameRunning = true;
-            this.gameLoop();
-        });
-    }
+        // Update gravity based on speed multiplier
+        this.gravity = this.baseGravity * this.speedMultiplier;
+    },
     
     /**
      * Main game loop
      */
-    gameLoop() {
+    gameLoop: function() {
         if (!this.gameRunning) return;
         
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw background
-        this.drawBackground();
+        // Update game state
+        this.update();
         
+        // Draw everything
+        this.draw();
+        
+        // Continue loop
+        requestAnimationFrame(() => this.gameLoop());
+    },
+    
+    /**
+     * Update game state
+     */
+    update: function() {
         // Update player
-        if (this.player) {
-            this.player.update(
-                this.inputManager.keys, 
-                this.platforms, 
-                this.obstacles, 
-                this.boss, 
-                this.gravity, 
-                this.canvas.height,
-                this.secondBoss
-            );
-        }
+        Player.update();
         
-        // Update enemies only if player exists
-        if (this.player) {
-            this.enemyManager.update(
-                this.platforms, 
-                this.obstacles, 
-                this.player, 
-                this.gravity, 
-                this.canvas.height, 
-                this.config.BOSS_AREA_START
-            );
-        }
+        // Update enemies
+        Enemies.update();
         
         // Update boss
-        if (this.boss) {
-            this.boss.update(this.platforms, this.gravity);
-        }
-        
-        // Update second boss (for level 4)
-        if (this.secondBoss) {
-            this.secondBoss.update(this.platforms, this.gravity);
-        }
-        // Draw level elements
-        this.levelManager.drawPlatforms(this.ctx, this.cameraX, this.assetManager.assets);
-        this.levelManager.drawObstacles(this.ctx, this.cameraX, this.assetManager.assets);
-        this.levelManager.drawLevelEnd(this.ctx, this.cameraX, this.bossDefeated);
-        
-        // Draw player
-        if (this.player) {
-            this.player.draw(this.ctx, this.cameraX);
-        }
-        
-        // Draw enemies
-        this.enemyManager.draw(
-            this.ctx, 
-            this.cameraX, 
-            this.assetManager.assets, 
-            this.currentLevel
-        );
-        
-        // Draw boss
-        if (this.boss) {
-            this.boss.draw(this.ctx, this.cameraX);
-            
-            // Draw boss health bar if near boss
-            if (this.player && 
-                Math.abs(this.player.x - this.boss.x) < 500 && 
-                this.boss.active) {
-                this.boss.drawHealthBar(this.ctx);
-            }
-        }
-        
-        // Draw second boss (for level 4)
-        if (this.secondBoss) {
-            this.secondBoss.draw(this.ctx, this.cameraX);
-            
-            // Draw second boss health bar if near boss
-            if (this.player && 
-                Math.abs(this.player.x - this.secondBoss.x) < 500 && 
-                this.secondBoss.active) {
-                this.secondBoss.drawHealthBar(this.ctx);
-            }
-        }
-        
-        // Update camera position to follow player
-        if (this.player) {
-            if (this.player.x > this.canvas.width / 3 && 
-                this.player.x < this.levelEnd.x - this.canvas.width * 2/3) {
-                this.cameraX = this.player.x - this.canvas.width / 3;
-            }
-            
-            // Update score display if score changed
-            if (this.player.score % 100 === 0) {
-                this.uiManager.updateScoreDisplay(this.player.score, this.currentLevel);
-            }
-        }
+        Boss.update();
         
         // Check for level completion
-        if (this.player && this.bossDefeated && 
-            this.player.x + this.player.width > this.levelEnd.x) {
+        if (Boss.defeated && Player.x + Player.width > LevelManager.currentLevel.end.x) {
             this.gameRunning = false;
-            this.currentLevel = Math.min(this.currentLevel + 1, this.config.MAX_LEVEL);
-            this.showMessage("Level Complete! Score: " + this.player.score);
-        }
-        
-        // For level 4, both bosses must be defeated
-        if (this.currentLevel === 4) {
-            this.bossDefeated = (this.boss && !this.boss.active) && 
-                               (this.secondBoss && !this.secondBoss.active);
-        } else {
-            this.bossDefeated = (this.boss && !this.boss.active);
+            this.currentLevel++;
+            UI.showLevelComplete(this.score);
         }
         
         // Check if player is alive
-        if (this.player && !this.player.isAlive) {
+        if (!Player.isAlive) {
             this.lives--;
-            this.uiManager.updateLivesDisplay(this.lives);
+            UI.updateLivesDisplay(this.lives);
             
             if (this.lives <= 0) {
                 this.gameRunning = false;
-                this.showMessage("Game Over! Score: " + this.player.score);
+                UI.showGameOver(this.score);
             } else {
-                this.player.resetAfterDeath();
+                Player.resetAfterDeath();
             }
         }
+    },
+    
+    /**
+     * Draw game elements
+     */
+    draw: function() {
+        // Draw background
+        Background.draw();
         
-        requestAnimationFrame(() => this.gameLoop());
-    }
+        // Draw platforms
+        LevelManager.drawPlatforms();
+        
+        // Draw obstacles
+        LevelManager.drawObstacles();
+        
+        // Draw level end
+        LevelManager.drawLevelEnd();
+        
+        // Draw enemies
+        Enemies.draw();
+        
+        // Draw player
+        Player.draw();
+        
+        // Draw boss
+        Boss.draw();
+        
+        // Draw boss health bar if near boss
+        if (Math.abs(Player.x - Boss.x) < 500 && Boss.active) {
+            Boss.drawHealthBar();
+        }
+    },
     
     /**
-     * Draw background with parallax effect
+     * Add to score
+     * @param {number} points - Points to add
      */
-    drawBackground() {
-        // Draw each layer with parallax effect
-        this.assetManager.assets.background.layers.forEach(layer => {
-            const offsetX = -this.cameraX * layer.speed;
-            this.ctx.drawImage(
-                layer.img, 
-                offsetX % this.assetManager.assets.background.width, 
-                0
-            );
-            this.ctx.drawImage(
-                layer.img, 
-                offsetX % this.assetManager.assets.background.width + 
-                this.assetManager.assets.background.width, 
-                0
-            );
-        });
+    addScore: function(points) {
+        this.score += points;
+        UI.updateScoreDisplay(this.score);
     }
-    
-    /**
-     * Show message overlay
-     * @param {string} text - Message text
-     */
-    showMessage(text) {
-        this.uiManager.showMessage(
-            this.ctx, 
-            text, 
-            this.levelSelectionMode, 
-            this.currentLevel, 
-            this.bossDefeated, 
-            this.speedMultiplier
-        );
-    }
-}
+};
 
-// Export the GameEngine class
-if (typeof window !== 'undefined') {
-    window.GameEngine = GameEngine;
-}
+// Initialize engine when window loads
+window.addEventListener('load', () => Engine.init());

@@ -4,7 +4,88 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VOOO's Adventure</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #222;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            border: 3px solid #444;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #gameCanvas {
+            background-color: #87CEEB;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #gameUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+        }
+        
+        #score, #lives {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+            color: #3498db;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #instructions {
+            margin-top: 20px;
+            max-width: 800px;
+            text-align: center;
+            line-height: 1.5;
+        }
+    </style>
 </head>
 <body>
     <h1>VOOO's Adventure</h1>
@@ -18,7 +99,7 @@
     </div>
     
     <div id="controls">
-        <!-- Controls will be added via JavaScript -->
+        <!-- Only keep the reload button which will be added via JavaScript -->
     </div>
     
     <div id="instructions">
@@ -28,6 +109,20 @@
     </div>
     
     <!-- Add a version parameter to prevent caching -->
-    <script src="js/game.js?v=1.2.0"></script>
+    <script src="game.js?v=1.0.8"></script>
+    
+    <script>
+        // Force reload without cache
+        function forceReload() {
+            window.location.reload(true);
+        }
+        
+        // Add a reload button
+        const reloadButton = document.createElement('button');
+        reloadButton.textContent = 'Reload Game';
+        reloadButton.style.backgroundColor = '#9b59b6';
+        reloadButton.addEventListener('click', forceReload);
+        document.getElementById('controls').appendChild(reloadButton);
+    </script>
 </body>
 </html>

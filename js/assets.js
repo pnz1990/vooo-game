@@ -1,17 +1,16 @@
-// assets.js - Asset loading and management
-
 /**
- * Asset manager for the game
+ * Asset loading and management
  */
+import CONFIG from './config.js';
+
 class AssetManager {
-    constructor(config) {
-        this.config = config;
+    constructor() {
         this.assets = {
             vooo: {
                 running: null,
                 jumping: null,
-                width: config.PLAYER_WIDTH,
-                height: config.PLAYER_HEIGHT,
+                width: CONFIG.player.width,
+                height: CONFIG.player.height,
                 spriteWidth: 398,
                 spriteHeight: 625,
                 jumpSpriteWidth: 431,
@@ -20,25 +19,13 @@ class AssetManager {
                 currentFrame: 0,
                 frameCount: 0,
                 frameDelay: 8,
-                speed: config.BASE_PLAYER_SPEED * this.getSpeedMultiplier(),
                 facingRight: true,
                 isJumping: false
             },
             strawberry: {
                 img: null,
-                width: config.ENEMY_WIDTH,
-                height: config.ENEMY_HEIGHT,
-                spriteWidth: 1024,
-                spriteHeight: 1024,
-                frames: 1,
-                currentFrame: 0,
-                frameCount: 0,
-                frameDelay: 15
-            },
-            cherry: {
-                img: null,
-                width: config.ENEMY_WIDTH,
-                height: config.ENEMY_HEIGHT,
+                width: CONFIG.enemies.strawberry.width,
+                height: CONFIG.enemies.strawberry.height,
                 spriteWidth: 1024,
                 spriteHeight: 1024,
                 frames: 1,
@@ -49,19 +36,19 @@ class AssetManager {
             lava: {
                 color: '#FF4500',
                 glowColor: '#FFFF00',
-                animationSpeed: 0.003
+                animationSpeed: 0.2
             },
             boss: {
                 img: null,
-                width: config.BOSS_WIDTH,
-                height: config.BOSS_HEIGHT,
+                width: CONFIG.boss.width,
+                height: CONFIG.boss.height,
                 spriteWidth: 1024,
                 spriteHeight: 1024,
                 frames: 1,
                 currentFrame: 0,
                 frameCount: 0,
                 frameDelay: 20,
-                hitsRequired: config.BOSS_HITS_REQUIRED,
+                hitsRequired: CONFIG.boss.hitsRequired,
                 invulnerable: false,
                 invulnerableTimer: 0
             },
@@ -74,115 +61,67 @@ class AssetManager {
             },
             tiles: {
                 img: null,
-                size: config.TILE_SIZE
+                size: CONFIG.tiles.size
             }
         };
-        
-        this.currentLevel = 1;
-        this.imagesLoaded = 0;
-        this.totalImages = 5; // running.png, jumping.png, enemies.png, cherry-enemies.png, boss.png
-        this.onAllLoaded = null;
     }
-    
-    /**
-     * Get speed multiplier based on current level
-     * @returns {number} - Speed multiplier
-     */
-    getSpeedMultiplier() {
-        if (this.currentLevel === 1) {
-            return this.config.LEVEL_1_SPEED_MULTIPLIER;
-        } else {
-            return 1 + ((this.currentLevel - 2) * this.config.LEVEL_SPEED_INCREMENT);
-        }
-    }
-    
-    /**
-     * Set current level and update speed-dependent assets
-     * @param {number} level - Level number
-     */
-    setLevel(level) {
-        this.currentLevel = level;
-        const speedMultiplier = this.getSpeedMultiplier();
-        this.assets.vooo.speed = this.config.BASE_PLAYER_SPEED * speedMultiplier;
-    }
-    
-    /**
-     * Load all game assets
-     * @param {Function} callback - Function to call when all assets are loaded
-     */
-    loadAssets(callback) {
-        this.onAllLoaded = callback;
-        this.imagesLoaded = 0;
-        
-        // Load VOOO running sprite
-        this.assets.vooo.running = new Image();
-        this.assets.vooo.running.src = 'running.png';
-        this.assets.vooo.running.onload = () => this.checkAllImagesLoaded();
-        this.assets.vooo.running.onerror = () => {
-            console.error("Error loading running.png");
-            this.checkAllImagesLoaded();
-        };
-        
-        // Load VOOO jumping sprite
-        this.assets.vooo.jumping = new Image();
-        this.assets.vooo.jumping.src = 'jumping.png';
-        this.assets.vooo.jumping.onload = () => this.checkAllImagesLoaded();
-        this.assets.vooo.jumping.onerror = () => {
-            console.error("Error loading jumping.png");
-            this.checkAllImagesLoaded();
-        };
-        
-        // Load strawberry enemies sprite
-        this.assets.strawberry.img = new Image();
-        this.assets.strawberry.img.src = 'enemies.png';
-        this.assets.strawberry.img.onload = () => this.checkAllImagesLoaded();
-        this.assets.strawberry.img.onerror = () => {
-            console.error("Error loading enemies.png");
-            this.checkAllImagesLoaded();
-        };
-        
-        // Load cherry enemies sprite
-        this.assets.cherry.img = new Image();
-        this.assets.cherry.img.src = 'cherry-enemies.png';
-        this.assets.cherry.img.onload = () => this.checkAllImagesLoaded();
-        this.assets.cherry.img.onerror = () => {
-            console.error("Error loading cherry-enemies.png");
-            this.checkAllImagesLoaded();
-        };
-        
-        // Load boss sprite based on level
-        this.assets.boss.img = new Image();
-        if (this.currentLevel === 3) {
-            this.assets.boss.img.src = 'cherry-boss.png';
-        } else {
+
+    loadAssets() {
+        return new Promise((resolve, reject) => {
+            let loadedCount = 0;
+            const totalAssets = 4; // running.png, jumping.png, enemies.png, boss.png
+            
+            const checkAllLoaded = () => {
+                loadedCount++;
+                if (loadedCount === totalAssets) {
+                    resolve();
+                }
+            };
+            
+            // Load VOOO running sprite
+            this.assets.vooo.running = new Image();
+            this.assets.vooo.running.src = 'running.png';
+            this.assets.vooo.running.onload = checkAllLoaded;
+            this.assets.vooo.running.onerror = () => {
+                console.error("Error loading running.png");
+                checkAllLoaded();
+            };
+            
+            // Load VOOO jumping sprite
+            this.assets.vooo.jumping = new Image();
+            this.assets.vooo.jumping.src = 'jumping.png';
+            this.assets.vooo.jumping.onload = checkAllLoaded;
+            this.assets.vooo.jumping.onerror = () => {
+                console.error("Error loading jumping.png");
+                checkAllLoaded();
+            };
+            
+            // Load strawberry enemies sprite
+            this.assets.strawberry.img = new Image();
+            this.assets.strawberry.img.src = 'enemies.png';
+            this.assets.strawberry.img.onload = checkAllLoaded;
+            this.assets.strawberry.img.onerror = () => {
+                console.error("Error loading enemies.png");
+                checkAllLoaded();
+            };
+            
+            // Load boss sprite
+            this.assets.boss.img = new Image();
             this.assets.boss.img.src = 'boss.png';
-        }
-        this.assets.boss.img.onload = () => this.checkAllImagesLoaded();
-        this.assets.boss.img.onerror = () => {
-            console.error("Error loading boss.png");
-            this.checkAllImagesLoaded();
-        };
-        
-        // Create tiles for platforms
-        this.createTiles();
-        
-        // Create background layers
-        this.createBackgroundLayers();
+            this.assets.boss.img.onload = checkAllLoaded;
+            this.assets.boss.img.onerror = () => {
+                console.error("Error loading boss.png");
+                checkAllLoaded();
+            };
+            
+            // Create tiles for platforms
+            this.createTiles();
+            
+            // Create background layers
+            this.createBackgroundLayers();
+        });
     }
-    
-    /**
-     * Check if all images are loaded
-     */
-    checkAllImagesLoaded() {
-        this.imagesLoaded++;
-        if (this.imagesLoaded === this.totalImages + 1 && this.onAllLoaded) {
-            this.onAllLoaded();
-        }
-    }
-    
-    /**
-     * Create tiles for platforms
-     */
+
     createTiles() {
         this.assets.tiles.img = document.createElement('canvas');
         this.assets.tiles.img.width = this.assets.tiles.size * 3; // 3 tile types
@@ -217,16 +156,14 @@ class AssetManager {
         tilesCtx.fillRect(this.assets.tiles.size * 2 + 5, 10, 10, 10);
         tilesCtx.fillRect(this.assets.tiles.size * 2 + 20, 15, 15, 15);
     }
-    
-    /**
-     * Create background layers with parallax effect
-     */
+
     createBackgroundLayers() {
-        const { createCanvas } = window.GameUtils;
         this.assets.background.layers = [];
         
         // Sky layer
-        const skyLayer = createCanvas(this.assets.background.width, this.assets.background.height);
+        const skyLayer = document.createElement('canvas');
+        skyLayer.width = this.assets.background.width;
+        skyLayer.height = this.assets.background.height;
         const skyCtx = skyLayer.getContext('2d');
         
         // Gradient sky
@@ -242,7 +179,9 @@ class AssetManager {
         });
         
         // Mountains layer
-        const mountainsLayer = createCanvas(this.assets.background.width, this.assets.background.height);
+        const mountainsLayer = document.createElement('canvas');
+        mountainsLayer.width = this.assets.background.width;
+        mountainsLayer.height = this.assets.background.height;
         const mountainsCtx = mountainsLayer.getContext('2d');
         
         // Mountains
@@ -281,7 +220,9 @@ class AssetManager {
         });
         
         // Clouds layer
-        const cloudsLayer = createCanvas(this.assets.background.width, this.assets.background.height);
+        const cloudsLayer = document.createElement('canvas');
+        cloudsLayer.width = this.assets.background.width;
+        cloudsLayer.height = this.assets.background.height;
         const cloudsCtx = cloudsLayer.getContext('2d');
         
         // Clouds
@@ -305,7 +246,9 @@ class AssetManager {
         });
         
         // Trees and bushes layer
-        const treesLayer = createCanvas(this.assets.background.width, this.assets.background.height);
+        const treesLayer = document.createElement('canvas');
+        treesLayer.width = this.assets.background.width;
+        treesLayer.height = this.assets.background.height;
         const treesCtx = treesLayer.getContext('2d');
         
         // Trees
@@ -348,7 +291,9 @@ class AssetManager {
         });
         
         // Combine all layers into the background image
-        this.assets.background.img = createCanvas(this.assets.background.width, this.assets.background.height);
+        this.assets.background.img = document.createElement('canvas');
+        this.assets.background.img.width = this.assets.background.width;
+        this.assets.background.img.height = this.assets.background.height;
         const bgCtx = this.assets.background.img.getContext('2d');
         
         // Draw all layers
@@ -356,9 +301,15 @@ class AssetManager {
             bgCtx.drawImage(layer.img, 0, 0);
         });
     }
+
+    drawBackground(ctx, cameraX) {
+        // Draw each layer with parallax effect
+        this.assets.background.layers.forEach(layer => {
+            const offsetX = -cameraX * layer.speed;
+            ctx.drawImage(layer.img, offsetX % this.assets.background.width, 0);
+            ctx.drawImage(layer.img, offsetX % this.assets.background.width + this.assets.background.width, 0);
+        });
+    }
 }
 
-// Export the AssetManager
-if (typeof window !== 'undefined') {
-    window.AssetManager = AssetManager;
-}
+export default AssetManager;
