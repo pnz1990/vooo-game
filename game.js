@@ -58,6 +58,14 @@ const assets = {
         frameCount: 0,
         frameDelay: 15
     },
+    explosion: {
+        particles: [],
+        colors: ['#FF4500', '#FF6347', '#FF8C00', '#FFD700', '#FFFF00'], // Fire colors
+        duration: 30, // Frames the explosion lasts
+        particleCount: 30, // Number of particles per explosion
+        particleSize: 5, // Base size of particles
+        particleSpeed: 3 // Base speed of particles
+    },
     lava: {
         color: '#FF4500', // Bright orange-red
         glowColor: '#FFFF00', // Yellow glow
@@ -128,6 +136,7 @@ const boss = {
 let platforms = [];
 let enemies = [];
 let obstacles = [];
+let explosions = []; // Array to track active explosions
 let levelEnd = { x: 8000, width: 50, height: 500 };
 
 // Load game assets
@@ -351,6 +360,7 @@ function initLevel() {
     cameraX = 0;
     bossHits = 0;
     bossDefeated = false;
+    explosions = []; // Clear any active explosions
     
     // Set speed multiplier based on current level
     // Level 1: 15% slower (0.85)
@@ -642,6 +652,9 @@ function gameLoop() {
     // Update boss
     updateBoss();
     
+    // Update explosions
+    updateExplosions();
+    
     // Draw platforms
     drawPlatforms();
     
@@ -659,6 +672,9 @@ function gameLoop() {
     
     // Draw boss
     drawBoss();
+    
+    // Draw explosions
+    drawExplosions();
     
     // Draw boss health bar if near boss
     if (Math.abs(player.x - boss.x) < 500 && boss.active) {
@@ -984,6 +1000,16 @@ function updateEnemies() {
                 score += 100;
                 updateScoreDisplay();
             } else {
+                // Player gets hit by enemy from the side or below
+                
+                // Create explosion if it's a cherry enemy (level 3 or 4)
+                if (currentLevel === 3 || currentLevel === 4) {
+                    createExplosion(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
+                }
+                
+                // Deactivate enemy
+                enemy.active = false;
+                
                 // Player gets hit
                 player.isAlive = false;
             }
