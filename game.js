@@ -13,7 +13,7 @@ let gameRunning = false;
 let score = 0;
 let lives = 3;
 let currentLevel = 1;
-let maxLevel = 3; // Maximum available level (updated to 3)
+let maxLevel = 4; // Maximum available level (updated to 4)
 let speedMultiplier = 0.85; // Level 1: 15% slower (0.85)
 let gravity = 0.46; // Base gravity value
 let keys = {};
@@ -142,7 +142,7 @@ function loadAssets() {
     
     // Load enemies sprite based on level
     assets.strawberry.img = new Image();
-    if (currentLevel === 3) {
+    if (currentLevel === 3 || currentLevel === 4) {
         assets.strawberry.img.src = 'cherry-enemies.png';
     } else {
         assets.strawberry.img.src = 'enemies.png';
@@ -154,7 +154,7 @@ function loadAssets() {
     
     // Load boss sprite based on level
     assets.boss.img = new Image();
-    if (currentLevel === 3) {
+    if (currentLevel === 3 || currentLevel === 4) {
         assets.boss.img.src = 'cherry-boss.png';
     } else {
         assets.boss.img.src = 'boss.png';
@@ -355,7 +355,11 @@ function initLevel() {
     // Set speed multiplier based on current level
     // Level 1: 15% slower (0.85)
     // Level 2+: Progressively faster
-    speedMultiplier = currentLevel === 1 ? 0.85 : 1 + ((currentLevel - 2) * 0.1);
+    if (currentLevel === 1) {
+        speedMultiplier = 0.85; // Level 1: 15% slower
+    } else {
+        speedMultiplier = 1 + ((currentLevel - 2) * 0.1); // Other levels follow progression
+    }
     
     // Update speed-dependent variables
     gravity = 0.46 * speedMultiplier;
@@ -546,6 +550,8 @@ function initLevel() {
         enemyCount = Math.floor(baseEnemyCount * 1.1); // Level 2: 10% more than base
     } else if (currentLevel === 3) {
         enemyCount = Math.floor(baseEnemyCount * 1.2); // Level 3: 20% more than base
+    } else if (currentLevel === 4) {
+        enemyCount = Math.floor(baseEnemyCount * 1.3); // Level 4: 30% more than base
     } else {
         enemyCount = Math.floor(baseEnemyCount * (1 + (currentLevel - 2) * 0.15)); // Higher levels: Even more
     }
@@ -573,7 +579,8 @@ function initLevel() {
     
     // Add some enemies on platforms - fewer in level 1
     const platformEnemyChance = currentLevel === 1 ? 0.1 : 
-                               (currentLevel === 3 ? 0.5 : 0.4); // Level 3 has more platform enemies
+                               (currentLevel === 3 ? 0.5 : 
+                               (currentLevel === 4 ? 0.6 : 0.4)); // Level 4 has most platform enemies
     
     // Filter platforms to only include those outside the boss area
     const nonBossPlatforms = platforms.filter(platform => platform.x < 7400 || platform.type === 'ground');
@@ -1399,10 +1406,16 @@ function showMessage(text) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText('Level 3: Cherry Chaos', canvas.width / 2, canvas.height / 2 + 145);
         
+        // Level 4 button
+        ctx.fillStyle = currentLevel === 4 ? '#4CAF50' : '#3498db';
+        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 170, 200, 40);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('Level 4: Cherry Challenge', canvas.width / 2, canvas.height / 2 + 195);
+        
         // Instructions
         ctx.font = '14px Arial';
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Click on a level to start, or press 1-3 on keyboard', canvas.width / 2, canvas.height / 2 + 180);
+        ctx.fillText('Click on a level to start, or press 1-4 on keyboard', canvas.width / 2, canvas.height / 2 + 230);
     } else {
         // Regular game message
         ctx.font = '18px Arial';
@@ -1429,6 +1442,9 @@ function showMessage(text) {
         } else if (currentLevel === 3) {
             ctx.fillStyle = '#FF0066';
             ctx.fillText('LEVEL 3: Cherry Chaos - Beware the cherry enemies!', canvas.width / 2, canvas.height / 2 + 120);
+        } else if (currentLevel === 4) {
+            ctx.fillStyle = '#FF0066';
+            ctx.fillText('LEVEL 4: Cherry Challenge - 30% faster with cherry enemies!', canvas.width / 2, canvas.height / 2 + 120);
         }
     }
 }
@@ -1473,6 +1489,19 @@ canvas.addEventListener('click', (e) => {
             mouseY <= canvas.height / 2 + 160) {
             
             currentLevel = 3;
+            levelSelectionMode = false;
+            initLevel();
+            gameRunning = true;
+            gameLoop();
+        }
+        
+        // Check if clicked on level 4 button
+        if (mouseX >= canvas.width / 2 - 100 && 
+            mouseX <= canvas.width / 2 + 100 && 
+            mouseY >= canvas.height / 2 + 170 && 
+            mouseY <= canvas.height / 2 + 210) {
+            
+            currentLevel = 4;
             levelSelectionMode = false;
             initLevel();
             gameRunning = true;
@@ -1593,6 +1622,12 @@ window.addEventListener('keydown', (e) => {
                 gameLoop();
             } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
                 currentLevel = 3;
+                levelSelectionMode = false;
+                initLevel();
+                gameRunning = true;
+                gameLoop();
+            } else if (e.code === 'Digit4' || e.code === 'Numpad4') {
+                currentLevel = 4;
                 levelSelectionMode = false;
                 initLevel();
                 gameRunning = true;
