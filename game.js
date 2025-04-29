@@ -1284,31 +1284,23 @@ function drawEnemies() {
         if (screenX + enemy.width < 0 || screenX > canvas.width) return;
         
         try {
-            // For level 3 (cherry enemies), flip based on direction like the boss
-            if (currentLevel === 3) {
-                ctx.save();
-                if (enemy.velocityX < 0) {
-                    // Flip horizontally for left-moving enemies
-                    ctx.translate(screenX + enemy.width, enemy.y);
-                    ctx.scale(-1, 1);
-                    ctx.drawImage(
-                        assets.strawberry.img,
-                        0, 0, enemy.width, enemy.height
-                    );
-                } else {
-                    ctx.drawImage(
-                        assets.strawberry.img,
-                        screenX, enemy.y, enemy.width, enemy.height
-                    );
-                }
-                ctx.restore();
+            // Flip all enemies based on their movement direction
+            ctx.save();
+            if (enemy.velocityX < 0) {
+                // Flip horizontally for left-moving enemies
+                ctx.translate(screenX + enemy.width, enemy.y);
+                ctx.scale(-1, 1);
+                ctx.drawImage(
+                    assets.strawberry.img,
+                    0, 0, enemy.width, enemy.height
+                );
             } else {
-                // Regular drawing for other levels
                 ctx.drawImage(
                     assets.strawberry.img,
                     screenX, enemy.y, enemy.width, enemy.height
                 );
             }
+            ctx.restore();
         } catch (e) {
             console.error("Error drawing enemy:", e);
             // Fallback to a simple red circle if image fails
