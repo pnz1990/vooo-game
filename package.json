@@ -1,0 +1,36 @@
+{
+  "name": "vooo-game",
+  "version": "1.0.0",
+  "description": "A 2D side-scrolling platformer game featuring VOOO the superhero",
+  "main": "index.html",
+  "scripts": {
+    "test": "node js/test-runner.js",
+    "precommit": "npm test",
+    "prepush": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pnz1990/vooo-game.git"
+  },
+  "keywords": [
+    "game",
+    "platformer",
+    "javascript",
+    "canvas"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pnz1990/vooo-game/issues"
+  },
+  "homepage": "https://github.com/pnz1990/vooo-game#readme",
+  "devDependencies": {
+    "husky": "^8.0.3"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm test",
+      "pre-push": "npm test"
+    }
+  }
+}

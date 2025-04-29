@@ -35,6 +35,16 @@ A 2D side-scrolling platformer game featuring VOOO the superhero who must overco
 - **Start Button**: Start or restart the game
 - **Jump Button**: Alternative jump control for touch devices
 
+## Testing
+
+The game includes a comprehensive test suite to prevent regressions and ensure code quality:
+
+1. **Run tests manually**: `./run-tests.sh` or `npm test` (requires Node.js)
+2. **Automatic testing**: Tests run automatically before each git push via a pre-push hook
+3. **Test coverage**: Tests cover player mechanics, enemy behavior, collisions, level progression, and more
+
+If tests fail, the push will be aborted, ensuring only working code reaches the repository.
+
 ## Future Enhancements
 
 - Additional levels with increasing difficulty
