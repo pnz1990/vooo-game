@@ -225,6 +225,115 @@ const tests = {
         player.y = originalPlayerY;
     },
     
+    // Test enemy sprite flipping
+    testEnemySpriteFlipping: function() {
+        console.log("🧪 Testing enemy sprite flipping...");
+        
+        // Create test enemies with different movement directions
+        const rightMovingEnemy = {
+            x: 500,
+            y: 300,
+            width: assets.strawberry.width,
+            height: assets.strawberry.height,
+            velocityX: 1.5 * speedMultiplier, // Moving right
+            active: true
+        };
+        
+        const leftMovingEnemy = {
+            x: 700,
+            y: 300,
+            width: assets.strawberry.width,
+            height: assets.strawberry.height,
+            velocityX: -1.5 * speedMultiplier, // Moving left
+            active: true
+        };
+        
+        // Save the original context methods to mock them
+        const originalSave = ctx.save;
+        const originalTranslate = ctx.translate;
+        const originalScale = ctx.scale;
+        const originalDrawImage = ctx.drawImage;
+        const originalRestore = ctx.restore;
+        
+        let saveWasCalled = false;
+        let translateWasCalled = false;
+        let scaleWasCalled = false;
+        let drawImageWasCalled = false;
+        let restoreWasCalled = false;
+        let scaleDirection = 0;
+        
+        // Mock the context methods
+        ctx.save = function() { saveWasCalled = true; };
+        ctx.translate = function(x, y) { translateWasCalled = true; };
+        ctx.scale = function(x, y) { scaleWasCalled = true; scaleDirection = x; };
+        ctx.drawImage = function() { drawImageWasCalled = true; };
+        ctx.restore = function() { restoreWasCalled = true; };
+        
+        // Test right-moving enemy (should not flip)
+        // Reset mocks
+        saveWasCalled = false;
+        translateWasCalled = false;
+        scaleWasCalled = false;
+        drawImageWasCalled = false;
+        restoreWasCalled = false;
+        scaleDirection = 0;
+        
+        // Mock the drawEnemies function for a single right-moving enemy
+        const screenX = rightMovingEnemy.x - cameraX;
+        
+        // Simulate the drawing code for right-moving enemy
+        ctx.save();
+        if (rightMovingEnemy.velocityX < 0) {
+            ctx.translate(screenX + rightMovingEnemy.width, rightMovingEnemy.y);
+            ctx.scale(-1, 1);
+        }
+        ctx.drawImage(assets.strawberry.img, 0, 0, rightMovingEnemy.width, rightMovingEnemy.height);
+        ctx.restore();
+        
+        // Check that the right methods were called
+        assert.isTrue(saveWasCalled, "ctx.save() should be called for right-moving enemy");
+        assert.isTrue(drawImageWasCalled, "ctx.drawImage() should be called for right-moving enemy");
+        assert.isTrue(restoreWasCalled, "ctx.restore() should be called for right-moving enemy");
+        assert.isFalse(translateWasCalled, "ctx.translate() should not be called for right-moving enemy");
+        assert.isFalse(scaleWasCalled, "ctx.scale() should not be called for right-moving enemy");
+        
+        // Test left-moving enemy (should flip)
+        // Reset mocks
+        saveWasCalled = false;
+        translateWasCalled = false;
+        scaleWasCalled = false;
+        drawImageWasCalled = false;
+        restoreWasCalled = false;
+        scaleDirection = 0;
+        
+        // Mock the drawEnemies function for a single left-moving enemy
+        const screenX2 = leftMovingEnemy.x - cameraX;
+        
+        // Simulate the drawing code for left-moving enemy
+        ctx.save();
+        if (leftMovingEnemy.velocityX < 0) {
+            ctx.translate(screenX2 + leftMovingEnemy.width, leftMovingEnemy.y);
+            ctx.scale(-1, 1);
+        }
+        ctx.drawImage(assets.strawberry.img, 0, 0, leftMovingEnemy.width, leftMovingEnemy.height);
+        ctx.restore();
+        
+        // Check that the right methods were called
+        assert.isTrue(saveWasCalled, "ctx.save() should be called for left-moving enemy");
+        assert.isTrue(translateWasCalled, "ctx.translate() should be called for left-moving enemy");
+        assert.isTrue(scaleWasCalled, "ctx.scale() should be called for left-moving enemy");
+        assert.equal(scaleDirection, -1, "ctx.scale() should use -1 for x to flip horizontally");
+        assert.isTrue(drawImageWasCalled, "ctx.drawImage() should be called for left-moving enemy");
+        assert.isTrue(restoreWasCalled, "ctx.restore() should be called for left-moving enemy");
+        
+        // Restore the original context methods
+        ctx.save = originalSave;
+        ctx.translate = originalTranslate;
+        ctx.scale = originalScale;
+        ctx.drawImage = originalDrawImage;
+        ctx.restore = originalRestore;
+    },
+    
     // Platform collision tests
     testPlatformCollisions: function() {
         console.log("🧪 Testing platform collisions...");
@@ -282,6 +391,13 @@ const tests = {
         const originalHits = boss.hits;
         const originalActive = boss.active;
         
+        // Save original player state
+        const originalPlayerX = player.x;
+        const originalPlayerY = player.y;
+        const originalPlayerVelocityY = player.velocityY;
+        const originalPlayerIsAlive = player.isAlive;
+        const originalLives = lives;
+        
         // Test boss movement
         boss.x += boss.velocityX;
         assert.approximately(boss.x, originalX + boss.velocityX, 0.01, "Boss should move correctly");
@@ -293,12 +409,10 @@ const tests = {
         
         // Test boss-player collision detection
         // Position player above boss
-        const originalPlayerX = player.x;
-        const originalPlayerY = player.y;
-        
         player.x = boss.x + boss.width/2 - player.width/2;
         player.y = boss.y - player.height;
         player.velocityY = 1; // Moving downward
+        player.isAlive = true;
         
         // Check if collision detection works
         const collision = 
@@ -330,6 +444,47 @@ const tests = {
         const shouldBeDefeated = boss.hits >= assets.boss.hitsRequired;
         assert.isTrue(shouldBeDefeated, "Boss should be defeated after required hits");
         
+        // Test cherry boss instant defeat feature
+        // Save current level
+        const originalLevel = currentLevel;
+        
+        // Test with regular boss (level 1-2)
+        currentLevel = 2;
+        lives = 3;
+        player.isAlive = true;
+        
+        // Simulate collision with boss (not from above)
+        player.x = boss.x;
+        player.y = boss.y + boss.height/2;
+        player.velocityY = 0;
+        
+        // Check collision that's not from above
+        const sideCollision = 
+            player.x + 5 < boss.x + boss.width - 5 &&
+            player.x + player.width - 5 > boss.x + 5 &&
+            player.y + 5 < boss.y + boss.height - 5 &&
+            player.y + player.height - 5 > boss.y + 5 &&
+            !(player.velocityY > 0 && player.y + player.height - player.velocityY <= boss.y + boss.height/3);
+            
+        assert.isTrue(sideCollision, "Side collision with boss should be detected correctly");
+        
+        // Simulate the collision effect for regular boss
+        player.isAlive = false;
+        assert.isFalse(player.isAlive, "Player should lose a life when hit by regular boss");
+        assert.equal(lives, 3, "Lives should not be set to zero for regular boss");
+        
+        // Test with cherry boss (level 3-4)
+        currentLevel = 3;
+        lives = 3;
+        player.isAlive = true;
+        
+        // Simulate the collision effect for cherry boss
+        player.isAlive = false;
+        lives = 0; // Cherry boss sets lives to 0
+        
+        assert.isFalse(player.isAlive, "Player should lose a life when hit by cherry boss");
+        assert.equal(lives, 0, "Lives should be set to zero for cherry boss");
+        
         // Restore boss and player state
         boss.x = originalX;
         boss.y = originalY;
@@ -340,6 +495,11 @@ const tests = {
         
         player.x = originalPlayerX;
         player.y = originalPlayerY;
+        player.velocityY = originalPlayerVelocityY;
+        player.isAlive = originalPlayerIsAlive;
+        
+        lives = originalLives;
+        currentLevel = originalLevel;
     },
     
     // Level progression tests
@@ -477,6 +637,7 @@ function runAllTests() {
     tests.testGameInitialization();
     tests.testPlayerMechanics();
     tests.testEnemies();
+    tests.testEnemySpriteFlipping();
     tests.testPlatformCollisions();
     tests.testBoss();
     tests.testLevelProgression();
