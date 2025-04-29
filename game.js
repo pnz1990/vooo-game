@@ -21,6 +21,7 @@ let cameraX = 0;
 let levelSelectionMode = false; // Whether we're in level selection mode
 let bossHits = 0;
 let bossDefeated = false;
+let secondBossDefeated = false; // Track if second boss is defeated
 let doubleJumpEnabled = true; // Enable double jump feature
 let debugMode = false; // Disable debug information
 
@@ -140,7 +141,24 @@ const boss = {
     hits: 0,
     invulnerable: false,
     invulnerableTimer: 0,
-    jumpPower: -6.9 * speedMultiplier // Base jump power adjusted by speed multiplier
+    jumpPower: -6.9 * speedMultiplier, // Base jump power adjusted by speed multiplier
+    type: 'cherry' // Default boss type
+};
+
+// Second boss object for level 4
+const secondBoss = {
+    x: 7600, // Position slightly to the left of the first boss
+    y: 0,
+    width: assets.boss.width,
+    height: assets.boss.height,
+    velocityX: -1.725 * speedMultiplier, // Start moving in opposite direction
+    velocityY: 0,
+    active: false, // Only active in level 4
+    hits: 0,
+    invulnerable: false,
+    invulnerableTimer: 0,
+    jumpPower: -6.9 * speedMultiplier,
+    type: 'strawberry'
 };
 
 // Game objects
@@ -174,12 +192,24 @@ function loadAssets() {
     assets.cherry.width = 60;
     assets.cherry.height = 60;
     
-    // Load boss sprite based on level
+    // Load boss sprites based on level and type
     assets.boss.img = new Image();
+    
+    // Cherry boss (for boss object)
     if (currentLevel === 3 || currentLevel === 4) {
         assets.boss.img.src = 'cherry-boss.png';
     } else {
         assets.boss.img.src = 'boss.png';
+    }
+    
+    // For level 4, load second boss sprite (strawberry)
+    if (currentLevel === 4) {
+        // Create a new image for the second boss
+        secondBoss.img = new Image();
+        secondBoss.img.src = 'boss.png'; // Regular boss sprite for strawberry boss
+        secondBoss.active = true; // Activate second boss in level 4
+    } else {
+        secondBoss.active = false; // Deactivate second boss in other levels
     }
     
     // Make boss bigger for better visibility
@@ -373,6 +403,7 @@ function initLevel() {
     cameraX = 0;
     bossHits = 0;
     bossDefeated = false;
+    secondBossDefeated = false; // Reset second boss defeated state
     explosions = []; // Clear any active explosions
     
     // Set speed multiplier based on current level
@@ -405,7 +436,7 @@ function initLevel() {
     player.invulnerable = false;
     player.invulnerableTimer = 0;
     
-    // Reset boss
+    // Reset first boss
     boss.x = 7800;
     boss.y = 0;
     boss.velocityX = 1.725 * speedMultiplier;
@@ -414,6 +445,16 @@ function initLevel() {
     boss.hits = 0;
     boss.invulnerable = false;
     boss.invulnerableTimer = 0;
+    
+    // Reset second boss (for level 4)
+    secondBoss.x = 7600;
+    secondBoss.y = 0;
+    secondBoss.velocityX = -1.725 * speedMultiplier; // Move in opposite direction
+    secondBoss.velocityY = 0;
+    secondBoss.active = currentLevel === 4; // Only active in level 4
+    secondBoss.hits = 0;
+    secondBoss.invulnerable = false;
+    secondBoss.invulnerableTimer = 0;
     
     // Load appropriate assets for the current level
     loadAssets();
@@ -774,12 +815,18 @@ function gameLoop() {
     drawExplosions();
     
     // Draw boss health bar if near boss
-    if (Math.abs(player.x - boss.x) < 500 && boss.active) {
+    if (Math.abs(player.x - boss.x) < 500 && (boss.active || secondBoss.active)) {
         drawBossHealthBar();
     }
     
     // Check for level completion
-    if (bossDefeated && player.x + player.width > levelEnd.x) {
+    // For level 4, both bosses must be defeated
+    // For other levels, only the main boss needs to be defeated
+    const allBossesDefeated = currentLevel === 4 ? 
+                             (bossDefeated && secondBossDefeated) : 
+                             bossDefeated;
+    
+    if (allBossesDefeated && player.x + player.width > levelEnd.x) {
         gameRunning = false;
         currentLevel++; // Increment level for next game
         showMessage("Level Complete! Score: " + score);
@@ -985,6 +1032,42 @@ function updatePlayer() {
             }
         }
     }
+    
+    // Check for collision with second boss (level 4 only)
+    if (secondBoss.active && !player.invulnerable && !secondBoss.invulnerable &&
+        player.x + 5 < secondBoss.x + secondBoss.width - 5 &&
+        player.x + player.width - 5 > secondBoss.x + 5 &&
+        player.y + 5 < secondBoss.y + secondBoss.height - 5 &&
+        player.y + player.height - 5 > secondBoss.y + 5
+    ) {
+        // Check if player is jumping on second boss from above
+        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= secondBoss.y + secondBoss.height/3) {
+            // Hit second boss
+            secondBoss.hits++;
+            secondBoss.invulnerable = true;
+            secondBoss.invulnerableTimer = 30;
+            player.velocityY = player.jumpPower * 0.7; // Bounce
+            score += 200;
+            updateScoreDisplay();
+            
+            // Check if second boss is defeated
+            if (secondBoss.hits >= assets.boss.hitsRequired) {
+                secondBoss.active = false;
+                secondBossDefeated = true;
+                score += 1000;
+                updateScoreDisplay();
+            }
+        } else {
+            // Player gets hit by second boss
+            player.isAlive = false;
+            
+            // Strawberry boss in level 4 also defeats player immediately
+            if (currentLevel === 4) {
+                lives = 0; // Set lives to 0 to trigger game over
+                updateLivesDisplay();
+            }
+        }
+    }
 }
 
 // Update enemies
@@ -1169,6 +1252,55 @@ function updateBoss() {
             boss.invulnerable = false;
         }
     }
+    
+    // Update second boss (for level 4)
+    if (secondBoss.active) {
+        // Apply gravity
+        secondBoss.velocityY += gravity * 0.8;
+        
+        // Update second boss position
+        secondBoss.x += secondBoss.velocityX;
+        secondBoss.y += secondBoss.velocityY;
+        
+        // Check for collisions with platforms - ONLY ground platforms in boss area
+        platforms.forEach(platform => {
+            // Skip non-ground platforms in boss area
+            if (secondBoss.x > 7500 && platform.type !== 'ground') {
+                return;
+            }
+            
+            if (
+                secondBoss.y + secondBoss.height > platform.y &&
+                secondBoss.y < platform.y + platform.height &&
+                secondBoss.x + secondBoss.width - 5 > platform.x &&
+                secondBoss.x + 5 < platform.x + platform.width
+            ) {
+                // Collision from above (landing on platform)
+                if (secondBoss.velocityY > 0 && secondBoss.y + secondBoss.height - secondBoss.velocityY <= platform.y + 10) {
+                    secondBoss.y = platform.y - secondBoss.height;
+                    secondBoss.velocityY = 0;
+                    
+                    // Random jump
+                    if (Math.random() < 0.02) {
+                        secondBoss.velocityY = secondBoss.jumpPower;
+                    }
+                }
+            }
+        });
+        
+        // Reverse direction if hitting level boundaries
+        if (secondBoss.x < 7600 || secondBoss.x > 8000 - secondBoss.width) {
+            secondBoss.velocityX *= -1;
+        }
+        
+        // Handle invulnerability timer
+        if (secondBoss.invulnerable) {
+            secondBoss.invulnerableTimer--;
+            if (secondBoss.invulnerableTimer <= 0) {
+                secondBoss.invulnerable = false;
+            }
+        }
+    }
 }
 
 // Draw background
@@ -1292,7 +1424,14 @@ function drawObstacles() {
 function drawLevelEnd() {
     const screenX = levelEnd.x - cameraX;
     
-    if (screenX < canvas.width && bossDefeated) {
+    // Only show level end flag when both bosses are defeated
+    // For level 4, both bosses must be defeated
+    // For other levels, only the main boss needs to be defeated
+    const allBossesDefeated = currentLevel === 4 ? 
+                             (bossDefeated && secondBossDefeated) : 
+                             bossDefeated;
+    
+    if (screenX < canvas.width && allBossesDefeated) {
         // Pole
         ctx.fillStyle = '#888888';
         ctx.fillRect(screenX, 0, 5, levelEnd.height);
@@ -1414,70 +1553,142 @@ function drawEnemies() {
 
 // Draw boss
 function drawBoss() {
-    if (!boss.active) return;
-    
-    const screenX = boss.x - cameraX;
-    
-    // Skip if off-screen
-    if (screenX + boss.width < 0 || screenX > canvas.width) return;
-    
-    // Skip drawing if boss is invulnerable and should blink
-    if (boss.invulnerable && Math.floor(boss.invulnerableTimer / 5) % 2 === 0) {
-        return;
+    // Draw first boss
+    if (boss.active) {
+        const screenX = boss.x - cameraX;
+        
+        // Skip if off-screen
+        if (screenX + boss.width < 0 || screenX > canvas.width) return;
+        
+        // Skip drawing if boss is invulnerable and should blink
+        if (boss.invulnerable && Math.floor(boss.invulnerableTimer / 5) % 2 === 0) {
+            // Skip drawing
+        } else {
+            // Draw the boss sprite
+            try {
+                // Flip horizontally based on direction
+                ctx.save();
+                if (boss.velocityX < 0) {
+                    ctx.translate(screenX + boss.width, boss.y);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(
+                        assets.boss.img,
+                        0, 0, boss.width, boss.height
+                    );
+                } else {
+                    ctx.drawImage(
+                        assets.boss.img,
+                        screenX, boss.y, boss.width, boss.height
+                    );
+                }
+                ctx.restore();
+            } catch (e) {
+                console.error("Error drawing boss:", e);
+                // Fallback to a simple shape if image fails
+                ctx.fillStyle = '#FF6600';
+                ctx.fillRect(screenX, boss.y, boss.width, boss.height);
+            }
+        }
     }
     
-    // Draw the entire boss sprite
-    try {
-        // Flip horizontally based on direction
-        ctx.save();
-        if (boss.velocityX < 0) {
-            ctx.translate(screenX + boss.width, boss.y);
-            ctx.scale(-1, 1);
-            ctx.drawImage(
-                assets.boss.img,
-                0, 0, boss.width, boss.height
-            );
+    // Draw second boss (for level 4)
+    if (secondBoss.active) {
+        const screenX = secondBoss.x - cameraX;
+        
+        // Skip if off-screen
+        if (screenX + secondBoss.width < 0 || screenX > canvas.width) return;
+        
+        // Skip drawing if second boss is invulnerable and should blink
+        if (secondBoss.invulnerable && Math.floor(secondBoss.invulnerableTimer / 5) % 2 === 0) {
+            // Skip drawing
         } else {
-            ctx.drawImage(
-                assets.boss.img,
-                screenX, boss.y, boss.width, boss.height
-            );
+            // Draw the second boss sprite
+            try {
+                // Flip horizontally based on direction
+                ctx.save();
+                if (secondBoss.velocityX < 0) {
+                    ctx.translate(screenX + secondBoss.width, secondBoss.y);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(
+                        secondBoss.img,
+                        0, 0, secondBoss.width, secondBoss.height
+                    );
+                } else {
+                    ctx.drawImage(
+                        secondBoss.img,
+                        screenX, secondBoss.y, secondBoss.width, secondBoss.height
+                    );
+                }
+                ctx.restore();
+            } catch (e) {
+                console.error("Error drawing second boss:", e);
+                // Fallback to a simple shape if image fails
+                ctx.fillStyle = '#FF3300';
+                ctx.fillRect(screenX, secondBoss.y, secondBoss.width, secondBoss.height);
+            }
         }
-        ctx.restore();
-    } catch (e) {
-        console.error("Error drawing boss:", e);
-        // Fallback to a simple shape if image fails
-        ctx.fillStyle = '#FF6600';
-        ctx.fillRect(screenX, boss.y, boss.width, boss.height);
     }
 }
 
 // Draw boss health bar
 function drawBossHealthBar() {
-    const barWidth = 200;
-    const barHeight = 20;
-    const x = canvas.width / 2 - barWidth / 2;
-    const y = 50;
-    const healthPercentage = (assets.boss.hitsRequired - boss.hits) / assets.boss.hitsRequired;
-    
-    // Background
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(x, y, barWidth, barHeight);
-    
-    // Health
-    ctx.fillStyle = boss.invulnerable ? '#FFFF00' : '#FF0000';
-    ctx.fillRect(x, y, barWidth * healthPercentage, barHeight);
-    
-    // Border
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, barWidth, barHeight);
-    
-    // Text
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '16px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('BOSS', canvas.width / 2, y - 5);
+    // Only draw health bars if player is near boss area
+    if (Math.abs(player.x - boss.x) < 500 && (boss.active || secondBoss.active)) {
+        const barWidth = 200;
+        const barHeight = 20;
+        
+        // First boss health bar (cherry boss)
+        if (boss.active) {
+            const x = canvas.width / 2 - barWidth / 2;
+            const y = 30; // Position first boss health bar higher
+            const healthPercentage = (assets.boss.hitsRequired - boss.hits) / assets.boss.hitsRequired;
+            
+            // Background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(x, y, barWidth, barHeight);
+            
+            // Health
+            ctx.fillStyle = boss.invulnerable ? '#FFFF00' : '#FF0000';
+            ctx.fillRect(x, y, barWidth * healthPercentage, barHeight);
+            
+            // Border
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, barWidth, barHeight);
+            
+            // Text
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('CHERRY BOSS', canvas.width / 2, y - 5);
+        }
+        
+        // Second boss health bar (strawberry boss) - only in level 4
+        if (secondBoss.active) {
+            const x = canvas.width / 2 - barWidth / 2;
+            const y = 70; // Position second boss health bar lower
+            const healthPercentage = (assets.boss.hitsRequired - secondBoss.hits) / assets.boss.hitsRequired;
+            
+            // Background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(x, y, barWidth, barHeight);
+            
+            // Health
+            ctx.fillStyle = secondBoss.invulnerable ? '#FFFF00' : '#FF3300';
+            ctx.fillRect(x, y, barWidth * healthPercentage, barHeight);
+            
+            // Border
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, barWidth, barHeight);
+            
+            // Text
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('STRAWBERRY BOSS', canvas.width / 2, y - 5);
+        }
+    }
 }
 
 // Reset player after death
@@ -1534,7 +1745,7 @@ function showMessage(text) {
         ctx.fillStyle = currentLevel === 4 ? '#4CAF50' : '#3498db';
         ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 170, 200, 40);
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Level 4: Cherry Challenge', canvas.width / 2, canvas.height / 2 + 195);
+        ctx.fillText('Level 4: Double Boss Challenge', canvas.width / 2, canvas.height / 2 + 195);
         
         // Instructions
         ctx.font = '14px Arial';
@@ -1551,7 +1762,19 @@ function showMessage(text) {
         
         if (bossDefeated) {
             ctx.fillStyle = '#FFFF00';
-            ctx.fillText('Boss defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
+            
+            // For level 4, show different message based on which bosses are defeated
+            if (currentLevel === 4) {
+                if (bossDefeated && secondBossDefeated) {
+                    ctx.fillText('Both bosses defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
+                } else if (bossDefeated) {
+                    ctx.fillText('Cherry boss defeated! Now defeat the Strawberry boss!', canvas.width / 2, canvas.height / 2 + 80);
+                } else if (secondBossDefeated) {
+                    ctx.fillText('Strawberry boss defeated! Now defeat the Cherry boss!', canvas.width / 2, canvas.height / 2 + 80);
+                }
+            } else {
+                ctx.fillText('Boss defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
+            }
             
             if (currentLevel > 1) {
                 ctx.fillStyle = '#00FF00';
@@ -1568,7 +1791,7 @@ function showMessage(text) {
             ctx.fillText('LEVEL 3: Cherry Chaos - Beware the cherry enemies!', canvas.width / 2, canvas.height / 2 + 120);
         } else if (currentLevel === 4) {
             ctx.fillStyle = '#FF0066';
-            ctx.fillText('LEVEL 4: Cherry Challenge - 30% faster with cherry enemies!', canvas.width / 2, canvas.height / 2 + 120);
+            ctx.fillText('LEVEL 4: Double Boss Challenge - Defeat BOTH bosses to win!', canvas.width / 2, canvas.height / 2 + 120);
         }
     }
 }
