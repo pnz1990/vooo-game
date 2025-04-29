@@ -6,10 +6,32 @@ class MockCanvas {
     constructor(width, height) {
         this.width = width;
         this.height = height;
+        this.eventListeners = {};
     }
     
     getContext() {
         return new MockContext();
+    }
+    
+    addEventListener(event, callback) {
+        if (!this.eventListeners[event]) {
+            this.eventListeners[event] = [];
+        }
+        this.eventListeners[event].push(callback);
+    }
+    
+    dispatchEvent(event) {
+        const listeners = this.eventListeners[event.type] || [];
+        listeners.forEach(callback => callback(event));
+    }
+    
+    getBoundingClientRect() {
+        return {
+            left: 0,
+            top: 0,
+            width: this.width,
+            height: this.height
+        };
     }
 }
 
