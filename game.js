@@ -1543,41 +1543,7 @@ canvas.addEventListener('click', () => {
     }
 });
 
-// Handle mouse clicks for level selection
-canvas.addEventListener('click', (e) => {
-    if (levelSelectionMode && !gameRunning) {
-        // Get mouse position relative to canvas
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        // Check if clicked on level 1 button
-        if (mouseX >= canvas.width / 2 - 100 && 
-            mouseX <= canvas.width / 2 + 100 && 
-            mouseY >= canvas.height / 2 + 20 && 
-            mouseY <= canvas.height / 2 + 60) {
-            
-            currentLevel = 1;
-            levelSelectionMode = false;
-            initLevel();
-            gameRunning = true;
-            gameLoop();
-        }
-        
-        // Check if clicked on level 2 button
-        if (mouseX >= canvas.width / 2 - 100 && 
-            mouseX <= canvas.width / 2 + 100 && 
-            mouseY >= canvas.height / 2 + 70 && 
-            mouseY <= canvas.height / 2 + 110) {
-            
-            currentLevel = 2;
-            levelSelectionMode = false;
-            initLevel();
-            gameRunning = true;
-            gameLoop();
-        }
-    }
-});// Keyboard controls
+// This duplicate event listener has been removed// Keyboard controls
 window.addEventListener('keydown', (e) => {
     // Only register key press if it wasn't already pressed (prevents holding key to spam jump)
     if (!keys[e.code]) {
