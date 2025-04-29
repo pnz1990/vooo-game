@@ -58,6 +58,17 @@ const assets = {
         frameCount: 0,
         frameDelay: 15
     },
+    cherry: {
+        img: null,
+        width: 40,
+        height: 40,
+        spriteWidth: 1024, // Actual width of cherry-enemies.png
+        spriteHeight: 1024, // Actual height of cherry-enemies.png
+        frames: 1, // Using just one frame for now
+        currentFrame: 0,
+        frameCount: 0,
+        frameDelay: 15
+    },
     explosion: {
         particles: [],
         colors: ['#FF4500', '#FF6347', '#FF8C00', '#FFD700', '#FFFF00'], // Fire colors
@@ -149,17 +160,19 @@ function loadAssets() {
     assets.vooo.jumping = new Image();
     assets.vooo.jumping.src = 'jumping.png';
     
-    // Load enemies sprite based on level
+    // Load strawberry enemy sprite
     assets.strawberry.img = new Image();
-    if (currentLevel === 3 || currentLevel === 4) {
-        assets.strawberry.img.src = 'cherry-enemies.png';
-    } else {
-        assets.strawberry.img.src = 'enemies.png';
-    }
+    assets.strawberry.img.src = 'enemies.png';
+    
+    // Load cherry enemy sprite
+    assets.cherry.img = new Image();
+    assets.cherry.img.src = 'cherry-enemies.png';
     
     // Make enemies bigger for better visibility
     assets.strawberry.width = 60;
     assets.strawberry.height = 60;
+    assets.cherry.width = 60;
+    assets.cherry.height = 60;
     
     // Load boss sprite based on level
     assets.boss.img = new Image();
@@ -577,14 +590,55 @@ function initLevel() {
         // Position enemies on top of the ground, not buried in it
         const enemyY = canvas.height - 40 - assets.strawberry.height;
         
-        enemies.push({
-            x: enemyX,
-            y: enemyY,
-            width: assets.strawberry.width,
-            height: assets.strawberry.height,
-            velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier, // Random direction adjusted by speed multiplier
-            active: true
-        });
+        // For level 4, randomly choose between strawberry and cherry enemies
+        if (currentLevel === 4) {
+            // 50% chance for each enemy type
+            if (Math.random() < 0.5) {
+                // Strawberry enemy
+                enemies.push({
+                    x: enemyX,
+                    y: enemyY,
+                    width: assets.strawberry.width,
+                    height: assets.strawberry.height,
+                    velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                    active: true,
+                    type: 'strawberry'
+                });
+            } else {
+                // Cherry enemy
+                enemies.push({
+                    x: enemyX,
+                    y: enemyY,
+                    width: assets.cherry.width,
+                    height: assets.cherry.height,
+                    velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                    active: true,
+                    type: 'cherry'
+                });
+            }
+        } else if (currentLevel === 3) {
+            // Level 3: All cherry enemies
+            enemies.push({
+                x: enemyX,
+                y: enemyY,
+                width: assets.cherry.width,
+                height: assets.cherry.height,
+                velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                active: true,
+                type: 'cherry'
+            });
+        } else {
+            // Level 1-2: All strawberry enemies
+            enemies.push({
+                x: enemyX,
+                y: enemyY,
+                width: assets.strawberry.width,
+                height: assets.strawberry.height,
+                velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                active: true,
+                type: 'strawberry'
+            });
+        }
     }
     
     // Add some enemies on platforms - fewer in level 1
@@ -602,16 +656,59 @@ function initLevel() {
         }
         
         if (platform.width > 80 && Math.random() > (1 - platformEnemyChance)) {
-            enemies.push({
-                x: platform.x + platform.width/2,
-                // Position enemies on top of platforms, not buried in them
-                y: platform.y - assets.strawberry.height,
-                width: assets.strawberry.width,
-                height: assets.strawberry.height,
-                velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier, // Move left or right, adjusted by speed multiplier
-                platformIndex: platforms.indexOf(platform), // Get the actual index in the original array
-                active: true
-            });
+            // For level 4, randomly choose between strawberry and cherry enemies
+            if (currentLevel === 4) {
+                // 50% chance for each enemy type
+                if (Math.random() < 0.5) {
+                    // Strawberry enemy
+                    enemies.push({
+                        x: platform.x + platform.width/2,
+                        y: platform.y - assets.strawberry.height,
+                        width: assets.strawberry.width,
+                        height: assets.strawberry.height,
+                        velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                        platformIndex: platforms.indexOf(platform),
+                        active: true,
+                        type: 'strawberry'
+                    });
+                } else {
+                    // Cherry enemy
+                    enemies.push({
+                        x: platform.x + platform.width/2,
+                        y: platform.y - assets.cherry.height,
+                        width: assets.cherry.width,
+                        height: assets.cherry.height,
+                        velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                        platformIndex: platforms.indexOf(platform),
+                        active: true,
+                        type: 'cherry'
+                    });
+                }
+            } else if (currentLevel === 3) {
+                // Level 3: All cherry enemies
+                enemies.push({
+                    x: platform.x + platform.width/2,
+                    y: platform.y - assets.cherry.height,
+                    width: assets.cherry.width,
+                    height: assets.cherry.height,
+                    velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                    platformIndex: platforms.indexOf(platform),
+                    active: true,
+                    type: 'cherry'
+                });
+            } else {
+                // Level 1-2: All strawberry enemies
+                enemies.push({
+                    x: platform.x + platform.width/2,
+                    y: platform.y - assets.strawberry.height,
+                    width: assets.strawberry.width,
+                    height: assets.strawberry.height,
+                    velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                    platformIndex: platforms.indexOf(platform),
+                    active: true,
+                    type: 'strawberry'
+                });
+            }
         }
     });
     
@@ -1008,8 +1105,8 @@ function updateEnemies() {
             } else {
                 // Player gets hit by enemy from the side or below
                 
-                // Create explosion if it's a cherry enemy (level 3 or 4)
-                if (currentLevel === 3 || currentLevel === 4) {
+                // Create explosion if it's a cherry enemy
+                if (enemy.type === 'cherry') {
                     createExplosion(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
                 }
                 
@@ -1284,6 +1381,9 @@ function drawEnemies() {
         if (screenX + enemy.width < 0 || screenX > canvas.width) return;
         
         try {
+            // Determine which sprite to use based on enemy type
+            const enemySprite = enemy.type === 'cherry' ? assets.cherry.img : assets.strawberry.img;
+            
             // Flip all enemies based on their movement direction
             ctx.save();
             if (enemy.velocityX < 0) {
@@ -1291,12 +1391,12 @@ function drawEnemies() {
                 ctx.translate(screenX + enemy.width, enemy.y);
                 ctx.scale(-1, 1);
                 ctx.drawImage(
-                    assets.strawberry.img,
+                    enemySprite,
                     0, 0, enemy.width, enemy.height
                 );
             } else {
                 ctx.drawImage(
-                    assets.strawberry.img,
+                    enemySprite,
                     screenX, enemy.y, enemy.width, enemy.height
                 );
             }
@@ -1304,7 +1404,7 @@ function drawEnemies() {
         } catch (e) {
             console.error("Error drawing enemy:", e);
             // Fallback to a simple red circle if image fails
-            ctx.fillStyle = '#FF0033';
+            ctx.fillStyle = enemy.type === 'cherry' ? '#FF0066' : '#FF0033';
             ctx.beginPath();
             ctx.arc(screenX + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2, 0, Math.PI * 2);
             ctx.fill();
