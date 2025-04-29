@@ -880,6 +880,12 @@ function updatePlayer() {
         } else {
             // Player gets hit by boss
             player.isAlive = false;
+            
+            // If it's a cherry boss (level 3 or 4), defeat player immediately regardless of lives
+            if (currentLevel === 3 || currentLevel === 4) {
+                lives = 0; // Set lives to 0 to trigger game over
+                updateLivesDisplay();
+            }
         }
     }
 }
