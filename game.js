@@ -1811,23 +1811,29 @@ function drawLevelSelectionScreen(title) {
         }
     ];
     
-    // Draw level buttons
-    const buttonWidth = 180;
-    const buttonHeight = 80;
-    const spacing = 20;
-    const startY = 150;
+    // Draw level buttons in 2x2 grid
+    const buttonWidth = 160;
+    const buttonHeight = 70;
+    const spacingX = 30;
+    const spacingY = 20;
+    const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
+    const startY = 160;
     
     levels.forEach((level, index) => {
-        const x = canvas.width / 2 - buttonWidth / 2;
-        const y = startY + index * (buttonHeight + spacing);
+        const col = index % 2; // 0 or 1 (left or right column)
+        const row = Math.floor(index / 2); // 0 or 1 (top or bottom row)
+        
+        const x = startX + col * (buttonWidth + spacingX);
+        const y = startY + row * (buttonHeight + spacingY);
         
         drawLevelButton(x, y, buttonWidth, buttonHeight, level, currentLevel === level.number);
     });
     
-    // Instructions at bottom
+    // Instructions at bottom (adjusted for 2x2 layout)
     ctx.fillStyle = '#B0B0B0';
     ctx.font = '16px Arial';
-    ctx.fillText('Click a level or press 1-4 on your keyboard', canvas.width / 2, canvas.height - 40);
+    ctx.textAlign = 'center';
+    ctx.fillText('Click a level or press 1-4 on your keyboard', canvas.width / 2, canvas.height - 30);
 }
 
 // Draw individual level button
@@ -1866,9 +1872,9 @@ function drawLevelButton(x, y, width, height, level, isSelected) {
     ctx.shadowBlur = 0; // Reset shadow
     
     // Level number circle
-    const circleX = x + 25;
+    const circleX = x + 20;
     const circleY = y + height / 2;
-    const circleRadius = isHovered ? 20 : 18;
+    const circleRadius = isHovered ? 16 : 15;
     
     ctx.fillStyle = isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.9)';
     ctx.beginPath();
@@ -1876,29 +1882,29 @@ function drawLevelButton(x, y, width, height, level, isSelected) {
     ctx.fill();
     
     ctx.fillStyle = level.color;
-    ctx.font = isHovered ? 'bold 22px Arial' : 'bold 20px Arial';
+    ctx.font = isHovered ? 'bold 18px Arial' : 'bold 16px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(level.number.toString(), circleX, circleY + 7);
+    ctx.fillText(level.number.toString(), circleX, circleY + 6);
     
-    // Level icon (slightly larger on hover)
-    ctx.font = isHovered ? '26px Arial' : '24px Arial';
-    ctx.fillText(level.icon, x + width - 30, y + 30);
+    // Level icon (positioned to avoid overlap)
+    ctx.font = isHovered ? '20px Arial' : '18px Arial';
+    ctx.fillText(level.icon, x + width - 20, y + 20);
     
-    // Level title (brighter on hover)
+    // Level title (adjusted position to avoid overlap with icon)
     ctx.fillStyle = isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.95)';
-    ctx.font = isHovered ? 'bold 17px Arial' : 'bold 16px Arial';
+    ctx.font = isHovered ? 'bold 14px Arial' : 'bold 13px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText(level.title, x + 50, y + 25);
+    ctx.fillText(level.title, x + 42, y + 22);
     
     // Level subtitle
     ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.8)';
-    ctx.font = isHovered ? '13px Arial' : '12px Arial';
-    ctx.fillText(level.subtitle, x + 50, y + 45);
+    ctx.font = isHovered ? '11px Arial' : '10px Arial';
+    ctx.fillText(level.subtitle, x + 42, y + 38);
     
-    // Difficulty stars (golden on hover)
+    // Difficulty stars (positioned below subtitle)
     const stars = level.number;
     ctx.fillStyle = isHovered ? '#FFD700' : '#FFA500';
-    ctx.font = '12px Arial';
+    ctx.font = '10px Arial';
     let starText = '';
     for (let i = 0; i < stars; i++) {
         starText += '★';
@@ -1906,19 +1912,19 @@ function drawLevelButton(x, y, width, height, level, isSelected) {
     for (let i = stars; i < 4; i++) {
         starText += '☆';
     }
-    ctx.fillText(starText, x + 50, y + 62);
+    ctx.fillText(starText, x + 42, y + 52);
     
-    // Speed indicator
+    // Speed indicator (bottom right)
     let speedText = '';
-    if (level.number === 1) speedText = '85% Speed';
-    else if (level.number === 2) speedText = '100% Speed';
-    else if (level.number === 3) speedText = '110% Speed';
-    else if (level.number === 4) speedText = '120% Speed';
+    if (level.number === 1) speedText = '85%';
+    else if (level.number === 2) speedText = '100%';
+    else if (level.number === 3) speedText = '110%';
+    else if (level.number === 4) speedText = '120%';
     
     ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.6)';
-    ctx.font = '10px Arial';
+    ctx.font = '9px Arial';
     ctx.textAlign = 'right';
-    ctx.fillText(speedText, x + width - 10, y + height - 8);
+    ctx.fillText(speedText, x + width - 8, y + height - 6);
 }
 
 // Draw regular game message (non-level selection)
@@ -1985,16 +1991,20 @@ canvas.addEventListener('mousemove', (e) => {
         mouseX = e.clientX - rect.left;
         mouseY = e.clientY - rect.top;
         
-        // Check which button is being hovered
-        const buttonWidth = 180;
-        const buttonHeight = 80;
-        const spacing = 20;
-        const startY = 150;
-        const buttonX = canvas.width / 2 - buttonWidth / 2;
+        // Check which button is being hovered (2x2 grid layout)
+        const buttonWidth = 160;
+        const buttonHeight = 70;
+        const spacingX = 30;
+        const spacingY = 20;
+        const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
+        const startY = 160;
         
         hoveredButton = -1;
         for (let i = 0; i < 4; i++) {
-            const buttonY = startY + i * (buttonHeight + spacing);
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const buttonX = startX + col * (buttonWidth + spacingX);
+            const buttonY = startY + row * (buttonHeight + spacingY);
             
             if (mouseX >= buttonX && 
                 mouseX <= buttonX + buttonWidth && 
@@ -2020,16 +2030,20 @@ canvas.addEventListener('click', (e) => {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
         
-        // Button dimensions (matching the new design)
-        const buttonWidth = 180;
-        const buttonHeight = 80;
-        const spacing = 20;
-        const startY = 150;
-        const buttonX = canvas.width / 2 - buttonWidth / 2;
+        // Button dimensions (2x2 grid layout)
+        const buttonWidth = 160;
+        const buttonHeight = 70;
+        const spacingX = 30;
+        const spacingY = 20;
+        const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
+        const startY = 160;
         
         // Check each level button
         for (let i = 0; i < 4; i++) {
-            const buttonY = startY + i * (buttonHeight + spacing);
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const buttonX = startX + col * (buttonWidth + spacingX);
+            const buttonY = startY + row * (buttonHeight + spacingY);
             
             if (mouseX >= buttonX && 
                 mouseX <= buttonX + buttonWidth && 
