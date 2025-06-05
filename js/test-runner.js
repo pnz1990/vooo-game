@@ -1,6 +1,9 @@
 // Test Runner for VOOO Game
 // This script sets up a headless environment for running tests
 
+const fs = require('fs');
+const path = require('path');
+
 // Mock canvas and context for headless testing
 class MockCanvas {
     constructor(width, height) {
@@ -85,12 +88,6 @@ class MockImage {
 
 // Setup mock environment before running tests
 function setupMockEnvironment() {
-    // Save original globals
-    const originalWindow = typeof window !== 'undefined' ? window : {};
-    const originalDocument = typeof document !== 'undefined' ? document : {};
-    const originalImage = typeof Image !== 'undefined' ? Image : null;
-    const originalCanvas = typeof HTMLCanvasElement !== 'undefined' ? HTMLCanvasElement : null;
-    
     // Create mock globals
     global.window = {
         addEventListener: function(event, callback) {
@@ -138,49 +135,63 @@ function setupMockEnvironment() {
     global.requestAnimationFrame = function(callback) {
         setTimeout(callback, 16); // ~60fps
     };
+}
+
+// Load and execute JavaScript file in the global context
+function loadJavaScriptFile(filePath) {
+    const fullPath = path.resolve(__dirname, filePath);
+    const code = fs.readFileSync(fullPath, 'utf8');
     
-    return function() {
-        // Restore original globals
-        global.window = originalWindow;
-        global.document = originalDocument;
-        global.Image = originalImage;
-        global.HTMLCanvasElement = originalCanvas;
-    };
+    // Execute the code in the global context
+    const vm = require('vm');
+    const context = vm.createContext(global);
+    vm.runInContext(code, context);
 }
 
 // Run tests with proper environment setup
 function runTestsWithEnvironment() {
     console.log("Setting up test environment...");
     
-    const restoreEnvironment = setupMockEnvironment();
+    setupMockEnvironment();
     
     try {
-        // Load game code
-        require('../game.js');
+        // Load game code files in order
+        console.log("Loading game files...");
+        
+        // Load main game file
+        loadJavaScriptFile('../game.js');
         
         // Load explosion code
-        require('./explosion.js');
+        loadJavaScriptFile('./explosion.js');
         
         // Load and run tests
-        const tests = require('./tests.js');
+        console.log("Loading and running tests...");
+        loadJavaScriptFile('./tests.js');
         
-        // For testing purposes, let's just return success
-        console.log("All tests completed successfully!");
-        return true;
+        // Run the tests
+        if (typeof global.runAllTests === 'function') {
+            const testResult = global.runAllTests();
+            return testResult;
+        } else if (typeof runAllTests === 'function') {
+            const testResult = runAllTests();
+            return testResult;
+        } else {
+            console.error("runAllTests function not found!");
+            return false;
+        }
     } catch (error) {
         console.error("Error running tests:", error);
+        console.error("Stack trace:", error.stack);
         return false;
-    } finally {
-        restoreEnvironment();
     }
 }
 
 // Run the tests
 const testResult = runTestsWithEnvironment();
 if (testResult) {
-    console.log("All tests passed! You can safely push your changes.");
+    console.log("✅ All tests passed! You can safely push your changes.");
     process.exit(0);
 } else {
-    console.error("Tests failed! Please fix the issues before pushing.");
+    console.error("❌ Tests failed! Please fix the issues before pushing.");
     process.exit(1);
 }
