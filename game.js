@@ -771,6 +771,14 @@ function updateLivesDisplay() {
     livesElement.textContent = `Lives: ${lives}`;
 }
 
+// Level selection animation loop
+function levelSelectionLoop() {
+    if (levelSelectionMode && !gameRunning) {
+        showMessage("VOOO's Adventure");
+        requestAnimationFrame(levelSelectionLoop);
+    }
+}
+
 // Game loop
 function gameLoop() {
     if (!gameRunning) return;
@@ -1709,92 +1717,301 @@ function resetPlayerAfterDeath() {
 
 // Show message
 function showMessage(text) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    if (levelSelectionMode) {
+        drawLevelSelectionScreen(text);
+    } else {
+        drawGameMessage(text);
+    }
+}
+
+// Animation variables for level selection
+let titlePulse = 0;
+let titlePulseDirection = 1;
+
+// Draw beautiful level selection screen
+function drawLevelSelectionScreen(title) {
+    // Update title pulse animation
+    titlePulse += titlePulseDirection * 0.02;
+    if (titlePulse > 1) {
+        titlePulse = 1;
+        titlePulseDirection = -1;
+    } else if (titlePulse < 0) {
+        titlePulse = 0;
+        titlePulseDirection = 1;
+    }
+    
+    // Create gradient background
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#1e3c72');
+    gradient.addColorStop(0.5, '#2a5298');
+    gradient.addColorStop(1, '#1e3c72');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Main title - smaller font
+    // Add subtle pattern overlay
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    for (let i = 0; i < canvas.width; i += 40) {
+        for (let j = 0; j < canvas.height; j += 40) {
+            if ((i + j) % 80 === 0) {
+                ctx.fillRect(i, j, 20, 20);
+            }
+        }
+    }
+    
+    // Main title with animated glow effect
+    const glowIntensity = 15 + titlePulse * 10;
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur = glowIntensity;
+    ctx.fillStyle = `rgba(255, 215, 0, ${0.8 + titlePulse * 0.2})`;
+    ctx.font = 'bold 36px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, canvas.width / 2, 80);
+    
+    // Reset shadow
+    ctx.shadowBlur = 0;
+    
+    // Subtitle
+    ctx.fillStyle = '#E8E8E8';
+    ctx.font = '18px Arial';
+    ctx.fillText('Choose Your Adventure', canvas.width / 2, 110);
+    
+    // Level buttons data
+    const levels = [
+        {
+            number: 1,
+            title: 'Beginner',
+            subtitle: 'Learn the basics',
+            color: '#4CAF50',
+            hoverColor: '#45a049',
+            icon: '🌱'
+        },
+        {
+            number: 2,
+            title: 'Lava Challenge',
+            subtitle: 'Avoid the lava gaps',
+            color: '#FF5722',
+            hoverColor: '#e64a19',
+            icon: '🌋'
+        },
+        {
+            number: 3,
+            title: 'Cherry Chaos',
+            subtitle: 'Explosive enemies',
+            color: '#E91E63',
+            hoverColor: '#c2185b',
+            icon: '🍒'
+        },
+        {
+            number: 4,
+            title: 'Double Boss',
+            subtitle: 'Ultimate challenge',
+            color: '#9C27B0',
+            hoverColor: '#7b1fa2',
+            icon: '👹'
+        }
+    ];
+    
+    // Draw level buttons
+    const buttonWidth = 180;
+    const buttonHeight = 80;
+    const spacing = 20;
+    const startY = 150;
+    
+    levels.forEach((level, index) => {
+        const x = canvas.width / 2 - buttonWidth / 2;
+        const y = startY + index * (buttonHeight + spacing);
+        
+        drawLevelButton(x, y, buttonWidth, buttonHeight, level, currentLevel === level.number);
+    });
+    
+    // Instructions at bottom
+    ctx.fillStyle = '#B0B0B0';
+    ctx.font = '16px Arial';
+    ctx.fillText('Click a level or press 1-4 on your keyboard', canvas.width / 2, canvas.height - 40);
+}
+
+// Draw individual level button
+function drawLevelButton(x, y, width, height, level, isSelected) {
+    const isHovered = hoveredButton === (level.number - 1);
+    
+    // Button shadow (larger for hover effect)
+    ctx.fillStyle = isHovered ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.3)';
+    const shadowOffset = isHovered ? 5 : 3;
+    ctx.fillRect(x + shadowOffset, y + shadowOffset, width, height);
+    
+    // Button background with gradient
+    const gradient = ctx.createLinearGradient(x, y, x, y + height);
+    if (isSelected) {
+        gradient.addColorStop(0, level.hoverColor);
+        gradient.addColorStop(1, level.color);
+    } else if (isHovered) {
+        gradient.addColorStop(0, level.color);
+        gradient.addColorStop(0.5, level.hoverColor);
+        gradient.addColorStop(1, level.color);
+    } else {
+        gradient.addColorStop(0, level.color);
+        gradient.addColorStop(1, level.hoverColor);
+    }
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x, y, width, height);
+    
+    // Button border (glowing effect for hover)
+    if (isHovered && !isSelected) {
+        ctx.shadowColor = level.color;
+        ctx.shadowBlur = 10;
+    }
+    ctx.strokeStyle = isSelected ? '#FFD700' : (isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.3)');
+    ctx.lineWidth = isSelected ? 3 : (isHovered ? 2 : 1);
+    ctx.strokeRect(x, y, width, height);
+    ctx.shadowBlur = 0; // Reset shadow
+    
+    // Level number circle
+    const circleX = x + 25;
+    const circleY = y + height / 2;
+    const circleRadius = isHovered ? 20 : 18;
+    
+    ctx.fillStyle = isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.9)';
+    ctx.beginPath();
+    ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = level.color;
+    ctx.font = isHovered ? 'bold 22px Arial' : 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(level.number.toString(), circleX, circleY + 7);
+    
+    // Level icon (slightly larger on hover)
+    ctx.font = isHovered ? '26px Arial' : '24px Arial';
+    ctx.fillText(level.icon, x + width - 30, y + 30);
+    
+    // Level title (brighter on hover)
+    ctx.fillStyle = isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.95)';
+    ctx.font = isHovered ? 'bold 17px Arial' : 'bold 16px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(level.title, x + 50, y + 25);
+    
+    // Level subtitle
+    ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.8)';
+    ctx.font = isHovered ? '13px Arial' : '12px Arial';
+    ctx.fillText(level.subtitle, x + 50, y + 45);
+    
+    // Difficulty stars (golden on hover)
+    const stars = level.number;
+    ctx.fillStyle = isHovered ? '#FFD700' : '#FFA500';
+    ctx.font = '12px Arial';
+    let starText = '';
+    for (let i = 0; i < stars; i++) {
+        starText += '★';
+    }
+    for (let i = stars; i < 4; i++) {
+        starText += '☆';
+    }
+    ctx.fillText(starText, x + 50, y + 62);
+    
+    // Speed indicator
+    let speedText = '';
+    if (level.number === 1) speedText = '85% Speed';
+    else if (level.number === 2) speedText = '100% Speed';
+    else if (level.number === 3) speedText = '110% Speed';
+    else if (level.number === 4) speedText = '120% Speed';
+    
+    ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.6)';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(speedText, x + width - 10, y + height - 8);
+}
+
+// Draw regular game message (non-level selection)
+function drawGameMessage(text) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Main title
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '24px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 50);
+    // Regular game message
+    ctx.font = '18px Arial';
+    ctx.fillText('Click anywhere to play', canvas.width / 2, canvas.height / 2 + 20);
     
-    if (levelSelectionMode) {
-        // Level selection instructions
-        ctx.font = '18px Arial';
-        ctx.fillText('Select a level:', canvas.width / 2, canvas.height / 2 - 10);
+    // Controls info - condensed to one line, smaller font
+    ctx.font = '14px Arial';
+    ctx.fillText('Controls: WASD/Arrows to move, Space/W/Up to double jump', canvas.width / 2, canvas.height / 2 + 50);
+    
+    if (bossDefeated) {
+        ctx.fillStyle = '#FFFF00';
         
-        // Level 1 button
-        ctx.fillStyle = currentLevel === 1 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 20, 200, 40);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Level 1: Beginner', canvas.width / 2, canvas.height / 2 + 45);
-        
-        // Level 2 button
-        ctx.fillStyle = currentLevel === 2 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 70, 200, 40);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Level 2: Lava Challenge', canvas.width / 2, canvas.height / 2 + 95);
-        
-        // Level 3 button
-        ctx.fillStyle = currentLevel === 3 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 120, 200, 40);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Level 3: Cherry Chaos', canvas.width / 2, canvas.height / 2 + 145);
-        
-        // Level 4 button
-        ctx.fillStyle = currentLevel === 4 ? '#4CAF50' : '#3498db';
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 170, 200, 40);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Level 4: Double Boss Challenge', canvas.width / 2, canvas.height / 2 + 195);
-        
-        // Instructions
-        ctx.font = '14px Arial';
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Click on a level to start, or press 1-4 on keyboard', canvas.width / 2, canvas.height / 2 + 230);
-    } else {
-        // Regular game message
-        ctx.font = '18px Arial';
-        ctx.fillText('Click anywhere to play', canvas.width / 2, canvas.height / 2 + 20);
-        
-        // Controls info - condensed to one line, smaller font
-        ctx.font = '14px Arial';
-        ctx.fillText('Controls: WASD/Arrows to move, Space/W/Up to double jump', canvas.width / 2, canvas.height / 2 + 50);
-        
-        if (bossDefeated) {
-            ctx.fillStyle = '#FFFF00';
-            
-            // For level 4, show different message based on which bosses are defeated
-            if (currentLevel === 4) {
-                if (bossDefeated && secondBossDefeated) {
-                    ctx.fillText('Both bosses defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
-                } else if (bossDefeated) {
-                    ctx.fillText('Cherry boss defeated! Now defeat the Strawberry boss!', canvas.width / 2, canvas.height / 2 + 80);
-                } else if (secondBossDefeated) {
-                    ctx.fillText('Strawberry boss defeated! Now defeat the Cherry boss!', canvas.width / 2, canvas.height / 2 + 80);
-                }
-            } else {
-                ctx.fillText('Boss defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
+        // For level 4, show different message based on which bosses are defeated
+        if (currentLevel === 4) {
+            if (bossDefeated && secondBossDefeated) {
+                ctx.fillText('Both bosses defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
+            } else if (bossDefeated) {
+                ctx.fillText('Cherry boss defeated! Now defeat the Strawberry boss!', canvas.width / 2, canvas.height / 2 + 80);
+            } else if (secondBossDefeated) {
+                ctx.fillText('Strawberry boss defeated! Now defeat the Cherry boss!', canvas.width / 2, canvas.height / 2 + 80);
             }
-            
-            if (currentLevel > 1) {
-                ctx.fillStyle = '#00FF00';
-                ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', canvas.width / 2, canvas.height / 2 + 100);
-            }
+        } else {
+            ctx.fillText('Boss defeated! Congratulations!', canvas.width / 2, canvas.height / 2 + 80);
         }
         
-        // Level-specific info
-        if (currentLevel === 2) {
-            ctx.fillStyle = '#FF4500';
-            ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', canvas.width / 2, canvas.height / 2 + 120);
-        } else if (currentLevel === 3) {
-            ctx.fillStyle = '#FF0066';
-            ctx.fillText('LEVEL 3: Cherry Chaos - Beware the cherry enemies!', canvas.width / 2, canvas.height / 2 + 120);
-        } else if (currentLevel === 4) {
-            ctx.fillStyle = '#FF0066';
-            ctx.fillText('LEVEL 4: Double Boss Challenge - Defeat BOTH bosses to win!', canvas.width / 2, canvas.height / 2 + 120);
+        if (currentLevel > 1) {
+            ctx.fillStyle = '#00FF00';
+            ctx.fillText('Next level: ' + Math.round((speedMultiplier - 0.85) * 100 / 0.85) + '% faster', canvas.width / 2, canvas.height / 2 + 100);
         }
     }
+    
+    // Level-specific info
+    if (currentLevel === 2) {
+        ctx.fillStyle = '#FF4500';
+        ctx.fillText('LEVEL 2: Watch out for LAVA GAPS!', canvas.width / 2, canvas.height / 2 + 120);
+    } else if (currentLevel === 3) {
+        ctx.fillStyle = '#FF0066';
+        ctx.fillText('LEVEL 3: Cherry Chaos - Beware the cherry enemies!', canvas.width / 2, canvas.height / 2 + 120);
+    } else if (currentLevel === 4) {
+        ctx.fillStyle = '#FF0066';
+        ctx.fillText('LEVEL 4: Double Boss Challenge - Defeat BOTH bosses to win!', canvas.width / 2, canvas.height / 2 + 120);
+    }
 }
+// Track mouse position for hover effects
+let mouseX = 0;
+let mouseY = 0;
+let hoveredButton = -1;
+
+// Mouse move event for hover effects
+canvas.addEventListener('mousemove', (e) => {
+    if (levelSelectionMode && !gameRunning) {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+        
+        // Check which button is being hovered
+        const buttonWidth = 180;
+        const buttonHeight = 80;
+        const spacing = 20;
+        const startY = 150;
+        const buttonX = canvas.width / 2 - buttonWidth / 2;
+        
+        hoveredButton = -1;
+        for (let i = 0; i < 4; i++) {
+            const buttonY = startY + i * (buttonHeight + spacing);
+            
+            if (mouseX >= buttonX && 
+                mouseX <= buttonX + buttonWidth && 
+                mouseY >= buttonY && 
+                mouseY <= buttonY + buttonHeight) {
+                hoveredButton = i;
+                canvas.style.cursor = 'pointer';
+                break;
+            }
+        }
+        
+        if (hoveredButton === -1) {
+            canvas.style.cursor = 'default';
+        }
+    }
+});
+
 // Handle mouse clicks for level selection
 canvas.addEventListener('click', (e) => {
     if (levelSelectionMode && !gameRunning) {
@@ -1803,56 +2020,29 @@ canvas.addEventListener('click', (e) => {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
         
-        // Check if clicked on level 1 button
-        if (mouseX >= canvas.width / 2 - 100 && 
-            mouseX <= canvas.width / 2 + 100 && 
-            mouseY >= canvas.height / 2 + 20 && 
-            mouseY <= canvas.height / 2 + 60) {
-            
-            currentLevel = 1;
-            levelSelectionMode = false;
-            initLevel();
-            gameRunning = true;
-            gameLoop();
-        }
+        // Button dimensions (matching the new design)
+        const buttonWidth = 180;
+        const buttonHeight = 80;
+        const spacing = 20;
+        const startY = 150;
+        const buttonX = canvas.width / 2 - buttonWidth / 2;
         
-        // Check if clicked on level 2 button
-        if (mouseX >= canvas.width / 2 - 100 && 
-            mouseX <= canvas.width / 2 + 100 && 
-            mouseY >= canvas.height / 2 + 70 && 
-            mouseY <= canvas.height / 2 + 110) {
+        // Check each level button
+        for (let i = 0; i < 4; i++) {
+            const buttonY = startY + i * (buttonHeight + spacing);
             
-            currentLevel = 2;
-            levelSelectionMode = false;
-            initLevel();
-            gameRunning = true;
-            gameLoop();
-        }
-        
-        // Check if clicked on level 3 button
-        if (mouseX >= canvas.width / 2 - 100 && 
-            mouseX <= canvas.width / 2 + 100 && 
-            mouseY >= canvas.height / 2 + 120 && 
-            mouseY <= canvas.height / 2 + 160) {
-            
-            currentLevel = 3;
-            levelSelectionMode = false;
-            initLevel();
-            gameRunning = true;
-            gameLoop();
-        }
-        
-        // Check if clicked on level 4 button
-        if (mouseX >= canvas.width / 2 - 100 && 
-            mouseX <= canvas.width / 2 + 100 && 
-            mouseY >= canvas.height / 2 + 170 && 
-            mouseY <= canvas.height / 2 + 210) {
-            
-            currentLevel = 4;
-            levelSelectionMode = false;
-            initLevel();
-            gameRunning = true;
-            gameLoop();
+            if (mouseX >= buttonX && 
+                mouseX <= buttonX + buttonWidth && 
+                mouseY >= buttonY && 
+                mouseY <= buttonY + buttonHeight) {
+                
+                currentLevel = i + 1;
+                levelSelectionMode = false;
+                initLevel();
+                gameRunning = true;
+                gameLoop();
+                break;
+            }
         }
     }
 });
@@ -1863,6 +2053,7 @@ canvas.addEventListener('click', () => {
         // Show level selection
         levelSelectionMode = true;
         showMessage("VOOO's Adventure");
+        levelSelectionLoop(); // Start animation loop
     }
 });
 
@@ -2090,6 +2281,9 @@ window.addEventListener('load', () => {
     // Show level selection immediately
     levelSelectionMode = true;
     showMessage("VOOO's Adventure");
+    
+    // Start level selection animation loop
+    levelSelectionLoop();
     
     // Load assets
     loadAssets();
