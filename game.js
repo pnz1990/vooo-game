@@ -3197,10 +3197,15 @@ class InputManager {
         return false;
     }
     
-    // Process cheat code with validation
+    // Process cheat code with validation and debugging
     processCheatCode(keyCode) {
         if (keyCode === 'Digit9' || keyCode === 'Numpad9') {
             this.cheatSequence.push('9');
+            
+            // Debug logging
+            if (debugMode) {
+                console.log('Cheat sequence:', this.cheatSequence);
+            }
             
             // Limit sequence length for security
             if (this.cheatSequence.length > 3) {
@@ -3212,11 +3217,12 @@ class InputManager {
                 this.cheatSequence.every(digit => digit === '9') && 
                 !cheatActivated) {
                 
+                console.log('🎮 Activating 999 lives cheat!');
                 this.activateCheat();
                 return true;
             }
-        } else {
-            // Reset sequence on any other key
+        } else if (keyCode) {
+            // Reset sequence on any other key (but not on undefined/null)
             this.cheatSequence = [];
         }
         
@@ -3226,7 +3232,16 @@ class InputManager {
     // Safely activate cheat
     activateCheat() {
         try {
+            // Use both global variable and game state
             lives = GAME_CONFIG.GAME.CHEAT_LIVES;
+            cheatActivated = true;
+            
+            // Update game state if available
+            if (typeof gameState !== 'undefined' && gameState) {
+                gameState.lives = GAME_CONFIG.GAME.CHEAT_LIVES;
+                gameState.cheatActivated = true;
+            }
+            
             updateLivesDisplay();
             cheatActivated = true;
             
@@ -3316,11 +3331,11 @@ window.addEventListener('keydown', (e) => {
         keys[e.code] = true;
     }
     
-    // Only process game-specific logic for valid keys
+    // Always process cheat codes (regardless of validation) - IMPORTANT FOR 999 CHEAT!
+    inputManager.processCheatCode(e.code);
+    
+    // Only process other game-specific logic for valid keys
     if (isValidInput) {
-        // Process cheat code
-        inputManager.processCheatCode(e.code);
-        
         // Process level selection
         if (inputManager.processLevelSelection(e.code)) {
             return;
