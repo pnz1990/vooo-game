@@ -330,8 +330,7 @@ const GAME_CONFIG = {
         CONVEYOR_SPEED: 2,
         SYRUP_SLOWDOWN: 0.3,
         BANANA_PEEL_SLIDE_SPEED: 4,
-        PLATFORM_COLLAPSE_TIME: 2000, // 2 seconds
-        CHECKPOINT_X: 2000 // Mid-level checkpoint
+        PLATFORM_COLLAPSE_TIME: 2000 // 2 seconds
     }
 };
 
@@ -547,7 +546,6 @@ let bananaFactory = {
     bananaPeels: [],
     rotatingSlicers: [],
     collapsingPlatforms: [],
-    checkpoint: { x: GAME_CONFIG.LEVEL_5.CHECKPOINT_X, activated: false },
     bananaBarrels: [],
     factoryHooks: [],
     missiles: [] // Banana missiles from boss
@@ -948,12 +946,6 @@ function updateBananaFactory() {
             bananaFactory.missiles.splice(index, 1);
         }
     });
-    
-    // Check checkpoint activation
-    if (!bananaFactory.checkpoint.activated && player.x >= bananaFactory.checkpoint.x) {
-        bananaFactory.checkpoint.activated = true;
-        showMessage("Checkpoint reached!", 2000);
-    }
 }
 
 function updateBananaBoss() {
@@ -1308,16 +1300,6 @@ function drawBananaFactory() {
             ctx.fillRect(screenX - 10, missile.y + missile.height/2 - 2, 10, 4);
         }
     });
-    
-    // Draw checkpoint
-    if (bananaFactory.checkpoint.activated) {
-        const checkpointX = bananaFactory.checkpoint.x - cameraX;
-        if (checkpointX > -50 && checkpointX < canvas.width) {
-            ctx.fillStyle = '#00FF00';
-            ctx.fillRect(checkpointX, canvas.height - 100, 10, 60);
-            ctx.fillText('CHECKPOINT', checkpointX - 30, canvas.height - 110);
-        }
-    }
 }
 
 function drawBananaBoss() {
@@ -2281,9 +2263,6 @@ function initBananaFactory() {
     bananaFactory.factoryHooks = [];
     bananaFactory.missiles = [];
     
-    // Reset checkpoint
-    bananaFactory.checkpoint.activated = false;
-    
     // Create conveyor belts
     bananaFactory.conveyorBelts = [
         { x: 800, y: 380, width: 300, height: 20, direction: 1, speed: GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED },
@@ -2590,6 +2569,12 @@ function checkGameConditions() {
     
     // Check if player is alive
     if (!player.isAlive) {
+        // Store death location for Level 5 spawn-at-death system
+        if (currentLevel === 5) {
+            player.deathX = player.x;
+            player.deathY = player.y;
+        }
+        
         lives--;
         updateLivesDisplay();
         
@@ -3087,8 +3072,8 @@ function drawPlatforms() {
         // Skip if off-screen
         if (screenX + platform.width < 0 || screenX > canvas.width) return;
         
-        // Skip drawing non-ground platforms in boss area
-        if (platform.x > 7400 && platform.type !== 'ground') return;
+        // Skip drawing non-ground platforms in boss area (but not for Level 5)
+        if (currentLevel !== 5 && platform.x > 7400 && platform.type !== 'ground') return;
         
         try {
             if (platform.type === 'ground') {
@@ -3664,8 +3649,29 @@ function resetPlayerAfterDeath() {
     player.doubleJumping = false;
     player.canDoubleJump = false;
     
-    // Move player back a bit from where they died
-    player.x = Math.max(100, player.x - 200);
+    if (currentLevel === 5) {
+        // Level 5: Spawn at death location (no checkpoint system)
+        if (player.deathX !== undefined && player.deathY !== undefined) {
+            player.x = Math.max(50, player.deathX); // Ensure not too far left
+            // Find a safe platform near death location
+            let safeY = canvas.height - 40 - player.height; // Default to ground
+            
+            // Look for platforms near death location
+            for (let platform of platforms) {
+                if (Math.abs(platform.x + platform.width/2 - player.x) < 100) {
+                    safeY = Math.min(safeY, platform.y - player.height);
+                }
+            }
+            
+            player.y = Math.max(0, safeY - 50); // Spawn slightly above platform
+        } else {
+            // Fallback if no death location stored
+            player.x = Math.max(100, player.x - 200);
+        }
+    } else {
+        // Other levels: Move player back a bit from where they died
+        player.x = Math.max(100, player.x - 200);
+    }
 }
 
 // Show message
