@@ -1016,6 +1016,7 @@ function updateBananaBoss() {
             
             if (bananaBoss.health <= 0) {
                 bananaBoss.active = false;
+                bossDefeated = true; // Set boss defeated for level completion
                 score += 1000;
                 showMessage("Banana Boss defeated! +1000 points", 3000);
                 updateScoreDisplay();
@@ -1307,23 +1308,70 @@ function drawBananaBoss() {
     
     const screenX = bananaBoss.x - cameraX;
     if (screenX > -bananaBoss.width && screenX < canvas.width) {
-        // Boss body
-        if (bananaBoss.invulnerable && Math.sin(performance.now() * 0.02) > 0) {
-            ctx.fillStyle = '#FF0000'; // Flash red when invulnerable
+        
+        // Try to use banana boss sprite first
+        if (assets.banana.boss && assets.banana.boss.complete) {
+            // Use banana boss sprite
+            ctx.save();
+            if (bananaBoss.invulnerable && Math.sin(performance.now() * 0.02) > 0) {
+                // Flash red when invulnerable
+                ctx.globalAlpha = 0.5;
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(screenX, bananaBoss.y, bananaBoss.width, bananaBoss.height);
+                ctx.globalAlpha = 1.0;
+            }
+            
+            ctx.drawImage(
+                assets.banana.boss,
+                screenX, bananaBoss.y, bananaBoss.width, bananaBoss.height
+            );
+            ctx.restore();
+            console.log('Using banana boss sprite');
         } else {
+            // Fallback banana boss rendering
+            console.log('Using banana boss fallback rendering');
+            
+            // Boss body - bright yellow banana
+            if (bananaBoss.invulnerable && Math.sin(performance.now() * 0.02) > 0) {
+                ctx.fillStyle = '#FF0000'; // Flash red when invulnerable
+            } else {
+                ctx.fillStyle = '#FFD700'; // Gold banana color
+            }
+            
+            // Main banana body (curved)
+            ctx.beginPath();
+            ctx.ellipse(screenX + bananaBoss.width/2, bananaBoss.y + bananaBoss.height/2, 
+                       bananaBoss.width/2.5, bananaBoss.height/2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Banana peel segments
             ctx.fillStyle = '#FFFF00';
+            for (let i = 0; i < 4; i++) {
+                const segmentX = screenX + (i + 1) * bananaBoss.width/5;
+                const segmentY = bananaBoss.y + bananaBoss.height/3;
+                ctx.beginPath();
+                ctx.ellipse(segmentX, segmentY, bananaBoss.width/8, bananaBoss.height/6, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Boss eyes - large and menacing
+            ctx.fillStyle = '#FF0000'; // Red eyes for boss
+            const eyeSize = 12;
+            ctx.beginPath();
+            ctx.arc(screenX + bananaBoss.width/3, bananaBoss.y + bananaBoss.height/3, eyeSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(screenX + 2*bananaBoss.width/3, bananaBoss.y + bananaBoss.height/3, eyeSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Boss mouth - angry
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(screenX + bananaBoss.width/2, bananaBoss.y + 2*bananaBoss.height/3, bananaBoss.width/6, Math.PI, 0);
+            ctx.stroke();
         }
-        
-        ctx.fillRect(screenX, bananaBoss.y, bananaBoss.width, bananaBoss.height);
-        
-        // Boss details
-        ctx.fillStyle = '#FFD700';
-        ctx.fillRect(screenX + 10, bananaBoss.y + 10, bananaBoss.width - 20, bananaBoss.height - 20);
-        
-        // Boss eyes
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(screenX + 20, bananaBoss.y + 30, 15, 15);
-        ctx.fillRect(screenX + bananaBoss.width - 35, bananaBoss.y + 30, 15, 15);
         
         // Boss health bar
         const healthBarWidth = 200;
@@ -1904,36 +1952,34 @@ function initLevel() {
             { x: 1600, y: canvas.height - 40, width: 500, height: 40, type: 'ground' },
             { x: 2200, y: canvas.height - 40, width: 400, height: 40, type: 'ground' },
             { x: 2700, y: canvas.height - 40, width: 600, height: 40, type: 'ground' },
-            { x: 3400, y: canvas.height - 40, width: 400, height: 40, type: 'ground' },
-            // Boss area floor
-            { x: 3900, y: canvas.height - 40, width: 400, height: 40, type: 'ground' }
+            // Boss area floor - extended and clear
+            { x: 3400, y: canvas.height - 40, width: 800, height: 40, type: 'ground' }
         );
         
-        // Factory platforms at different heights
+        // Factory platforms at different heights (NO platforms in boss area after x=3200)
         platforms.push(
-            // Lower platforms
+            // Lower platforms (early factory area)
             { x: 800, y: 380, width: 200, height: 20, type: 'platform' },
             { x: 1300, y: 350, width: 150, height: 20, type: 'platform' },
             { x: 1700, y: 320, width: 180, height: 20, type: 'platform' },
             { x: 2100, y: 340, width: 160, height: 20, type: 'platform' },
             { x: 2500, y: 300, width: 200, height: 20, type: 'platform' },
             { x: 2900, y: 330, width: 170, height: 20, type: 'platform' },
-            { x: 3300, y: 280, width: 150, height: 20, type: 'platform' },
             
-            // Mid-level platforms
+            // Mid-level platforms (early factory area)
             { x: 900, y: 250, width: 120, height: 20, type: 'platform' },
             { x: 1400, y: 220, width: 140, height: 20, type: 'platform' },
             { x: 1900, y: 200, width: 130, height: 20, type: 'platform' },
             { x: 2400, y: 180, width: 160, height: 20, type: 'platform' },
             { x: 2800, y: 200, width: 140, height: 20, type: 'platform' },
-            { x: 3200, y: 160, width: 120, height: 20, type: 'platform' },
             
-            // High platforms
+            // High platforms (early factory area only)
             { x: 1000, y: 120, width: 100, height: 20, type: 'platform' },
             { x: 1500, y: 100, width: 110, height: 20, type: 'platform' },
             { x: 2000, y: 80, width: 100, height: 20, type: 'platform' },
-            { x: 2600, y: 90, width: 120, height: 20, type: 'platform' },
-            { x: 3100, y: 70, width: 100, height: 20, type: 'platform' }
+            { x: 2600, y: 90, width: 120, height: 20, type: 'platform' }
+            
+            // NO PLATFORMS IN BOSS AREA (x > 3200) for easy boss jumping
         );
     } else {
         // Level 2-4: Ground with lava gaps
@@ -2228,8 +2274,14 @@ function initLevel() {
         }
     });
     
-    // Set level end - further away
-    levelEnd = { x: 8200, width: 50, height: 500 };
+    // Set level end based on level
+    if (currentLevel === 5) {
+        // Level 5: End inside factory after boss defeat
+        levelEnd = { x: 4000, width: 50, height: 500 }; // Much closer, inside factory
+    } else {
+        // Other levels: Standard far end
+        levelEnd = { x: 8200, width: 50, height: 500 };
+    }
     
     // Level 5: Banana Factory specific initialization
     if (currentLevel === 5) {
@@ -2320,8 +2372,8 @@ function initBananaFactory() {
         { x: 3000, y: 90, width: 80, height: 15, swingAngle: Math.PI, swingSpeed: 0.02, swingRange: Math.PI / 3 }
     ];
     
-    // Initialize Banana Boss
-    bananaBoss.x = 3800;
+    // Initialize Banana Boss - moved earlier for better boss fight
+    bananaBoss.x = 3500; // Moved from 3800 to 3500
     bananaBoss.y = 300;
     bananaBoss.health = GAME_CONFIG.BOSS.BANANA_BOSS_HITS;
     bananaBoss.maxHealth = GAME_CONFIG.BOSS.BANANA_BOSS_HITS;
@@ -3114,23 +3166,37 @@ function drawPlatforms() {
                         );
                     }
                 } else {
-                    // Fallback platform rendering
-                    ctx.fillStyle = currentLevel === 5 ? '#C0C0C0' : '#808080'; // Silver for factory, gray for others
-                    ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-                    
-                    // Add platform border
-                    ctx.strokeStyle = currentLevel === 5 ? '#A0A0A0' : '#606060';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
-                    
-                    // Add rivets for factory platforms
+                    // Fallback platform rendering with high contrast colors
                     if (currentLevel === 5) {
-                        ctx.fillStyle = '#808080';
-                        for (let x = 10; x < platform.width - 10; x += 20) {
+                        // Factory platforms - bright silver with dark borders for visibility
+                        ctx.fillStyle = '#E0E0E0'; // Bright silver
+                        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                        
+                        // Dark border for contrast
+                        ctx.strokeStyle = '#404040'; // Dark gray
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
+                        
+                        // Add bright rivets for factory look
+                        ctx.fillStyle = '#606060';
+                        for (let x = 10; x < platform.width - 10; x += 25) {
                             ctx.beginPath();
-                            ctx.arc(screenX + x, platform.y + platform.height/2, 2, 0, Math.PI * 2);
+                            ctx.arc(screenX + x, platform.y + platform.height/2, 3, 0, Math.PI * 2);
                             ctx.fill();
                         }
+                        
+                        // Add warning stripes on edges for high visibility
+                        ctx.fillStyle = '#FFD700'; // Gold warning color
+                        ctx.fillRect(screenX, platform.y, platform.width, 2);
+                        ctx.fillRect(screenX, platform.y + platform.height - 2, platform.width, 2);
+                    } else {
+                        // Other levels
+                        ctx.fillStyle = '#808080';
+                        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                        
+                        ctx.strokeStyle = '#606060';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
                     }
                 }
             }
