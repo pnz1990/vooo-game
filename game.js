@@ -1172,7 +1172,8 @@ function fireBananaMissile() {
 }
 
 // Level 5: Banana Factory drawing functions
-function drawBananaFactory() {
+// Level 5: Banana Factory background (drawn before platforms)
+function drawBananaFactoryBackground() {
     // Draw industrial factory background with depth
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, '#2C3E50'); // Dark blue-gray at top
@@ -1182,21 +1183,7 @@ function drawBananaFactory() {
     ctx.fillStyle = gradient;
     ctx.fillRect(0 - cameraX, 0, 6000, canvas.height);
     
-    // Draw factory floor with industrial pattern
-    ctx.fillStyle = '#2C3E50';
-    ctx.fillRect(0 - cameraX, canvas.height - 60, 6000, 60);
-    
-    // Add floor grid pattern
-    ctx.strokeStyle = '#34495E';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < 6000; x += 50) {
-        ctx.beginPath();
-        ctx.moveTo(x - cameraX, canvas.height - 60);
-        ctx.lineTo(x - cameraX, canvas.height);
-        ctx.stroke();
-    }
-    
-    // Draw industrial pipes and machinery with better detail
+    // Draw industrial pipes and machinery with better detail (background elements)
     for (let i = 0; i < 15; i++) {
         const pipeX = 300 + i * 300 - cameraX;
         const pipeHeight = 150 + Math.sin(i * 0.5) * 50;
@@ -1255,6 +1242,10 @@ function drawBananaFactory() {
         ctx.fillRect(windowX + 37, windowY + 5, 6, 50);
         ctx.fillRect(windowX + 5, windowY + 27, 70, 6);
     }
+}
+
+// Level 5: Banana Factory interactive elements (drawn after platforms)
+function drawBananaFactory() {
     
     // Draw enhanced conveyor belts
     bananaFactory.conveyorBelts.forEach(belt => {
@@ -2689,6 +2680,11 @@ function gameLoop(currentTime = performance.now()) {
         // Draw background
         drawBackground();
         
+        // Level 5: Draw Banana Factory background BEFORE platforms
+        if (currentLevel === 5) {
+            drawBananaFactoryBackground();
+        }
+        
         // Update player
         updatePlayer();
         
@@ -2716,7 +2712,7 @@ function gameLoop(currentTime = performance.now()) {
         // Draw level end
         drawLevelEnd();
         
-        // Level 5: Draw Banana Factory elements
+        // Level 5: Draw Banana Factory interactive elements AFTER platforms
         if (currentLevel === 5) {
             drawBananaFactory();
         }
