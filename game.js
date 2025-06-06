@@ -1871,7 +1871,7 @@ function initLevel() {
     boss.y = 0;
     boss.velocityX = 1.725 * speedMultiplier;
     boss.velocityY = 0;
-    boss.active = true;
+    boss.active = currentLevel !== 5; // Disable regular boss for Level 5
     boss.hits = 0;
     boss.invulnerable = false;
     boss.invulnerableTimer = 0;
@@ -1895,8 +1895,54 @@ function initLevel() {
         platforms = [
             { x: 0, y: canvas.height - 40, width: 8000, height: 40, type: 'ground' }
         ];
+    } else if (currentLevel === 5) {
+        // Level 5: Banana Factory - Custom platform layout
+        platforms = [];
+        obstacles = [];
+        
+        // Factory floor segments with gaps for machinery
+        platforms.push(
+            // Starting area
+            { x: 0, y: canvas.height - 40, width: 600, height: 40, type: 'ground' },
+            // Factory floor segments
+            { x: 700, y: canvas.height - 40, width: 400, height: 40, type: 'ground' },
+            { x: 1200, y: canvas.height - 40, width: 300, height: 40, type: 'ground' },
+            { x: 1600, y: canvas.height - 40, width: 500, height: 40, type: 'ground' },
+            { x: 2200, y: canvas.height - 40, width: 400, height: 40, type: 'ground' },
+            { x: 2700, y: canvas.height - 40, width: 600, height: 40, type: 'ground' },
+            { x: 3400, y: canvas.height - 40, width: 400, height: 40, type: 'ground' },
+            // Boss area floor
+            { x: 3900, y: canvas.height - 40, width: 400, height: 40, type: 'ground' }
+        );
+        
+        // Factory platforms at different heights
+        platforms.push(
+            // Lower platforms
+            { x: 800, y: 380, width: 200, height: 20, type: 'platform' },
+            { x: 1300, y: 350, width: 150, height: 20, type: 'platform' },
+            { x: 1700, y: 320, width: 180, height: 20, type: 'platform' },
+            { x: 2100, y: 340, width: 160, height: 20, type: 'platform' },
+            { x: 2500, y: 300, width: 200, height: 20, type: 'platform' },
+            { x: 2900, y: 330, width: 170, height: 20, type: 'platform' },
+            { x: 3300, y: 280, width: 150, height: 20, type: 'platform' },
+            
+            // Mid-level platforms
+            { x: 900, y: 250, width: 120, height: 20, type: 'platform' },
+            { x: 1400, y: 220, width: 140, height: 20, type: 'platform' },
+            { x: 1900, y: 200, width: 130, height: 20, type: 'platform' },
+            { x: 2400, y: 180, width: 160, height: 20, type: 'platform' },
+            { x: 2800, y: 200, width: 140, height: 20, type: 'platform' },
+            { x: 3200, y: 160, width: 120, height: 20, type: 'platform' },
+            
+            // High platforms
+            { x: 1000, y: 120, width: 100, height: 20, type: 'platform' },
+            { x: 1500, y: 100, width: 110, height: 20, type: 'platform' },
+            { x: 2000, y: 80, width: 100, height: 20, type: 'platform' },
+            { x: 2600, y: 90, width: 120, height: 20, type: 'platform' },
+            { x: 3100, y: 70, width: 100, height: 20, type: 'platform' }
+        );
     } else {
-        // Level 2+: Ground with lava gaps
+        // Level 2-4: Ground with lava gaps
         platforms = [];
         obstacles = []; // Clear obstacles first
         let currentX = 0;
@@ -2046,37 +2092,53 @@ function initLevel() {
         enemyCount = Math.floor(baseEnemyCount * 1.2); // Level 3: 20% more than base
     } else if (currentLevel === 4) {
         enemyCount = Math.floor(baseEnemyCount * 1.3); // Level 4: 30% more than base
+    } else if (currentLevel === 5) {
+        enemyCount = 25; // Level 5: Banana Factory - specific count
     } else {
         enemyCount = Math.floor(baseEnemyCount * (1 + (currentLevel - 2) * 0.15)); // Higher levels: Even more
     }
     
-    for (let i = 0; i < enemyCount; i++) {
-        const enemyX = 600 + i * 250 + Math.random() * 100;
-        
-        // STRICT CHECK: Skip this iteration if the enemy would be in or near the boss area
-        if (enemyX >= 7400) {  // Added buffer zone before boss area
-            continue;
-        }
-        
-        // Position enemies on top of the ground, not buried in it
-        const enemyY = canvas.height - 40 - assets.strawberry.height;
-        
-        // For level 4, randomly choose between strawberry and cherry enemies
-        if (currentLevel === 4) {
-            // 50% chance for each enemy type
-            if (Math.random() < 0.5) {
-                // Strawberry enemy
-                enemies.push({
-                    x: enemyX,
-                    y: enemyY,
-                    width: assets.strawberry.width,
-                    height: assets.strawberry.height,
-                    velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
-                    active: true,
-                    type: 'strawberry'
-                });
-            } else {
-                // Cherry enemy
+    // Level 5: Skip regular enemy generation - will be handled by initBananaFactory()
+    if (currentLevel !== 5) {
+        for (let i = 0; i < enemyCount; i++) {
+            const enemyX = 600 + i * 250 + Math.random() * 100;
+            
+            // STRICT CHECK: Skip this iteration if the enemy would be in or near the boss area
+            if (enemyX >= 7400) {  // Added buffer zone before boss area
+                continue;
+            }
+            
+            // Position enemies on top of the ground, not buried in it
+            const enemyY = canvas.height - 40 - assets.strawberry.height;
+            
+            // For level 4, randomly choose between strawberry and cherry enemies
+            if (currentLevel === 4) {
+                // 50% chance for each enemy type
+                if (Math.random() < 0.5) {
+                    // Strawberry enemy
+                    enemies.push({
+                        x: enemyX,
+                        y: enemyY,
+                        width: assets.strawberry.width,
+                        height: assets.strawberry.height,
+                        velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                        active: true,
+                        type: 'strawberry'
+                    });
+                } else {
+                    // Cherry enemy
+                    enemies.push({
+                        x: enemyX,
+                        y: enemyY,
+                        width: assets.cherry.width,
+                        height: assets.cherry.height,
+                        velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                        active: true,
+                        type: 'cherry'
+                    });
+                }
+            } else if (currentLevel === 3) {
+                // Level 3: All cherry enemies
                 enemies.push({
                     x: enemyX,
                     y: enemyY,
@@ -2086,29 +2148,18 @@ function initLevel() {
                     active: true,
                     type: 'cherry'
                 });
+            } else {
+                // Level 1-2: All strawberry enemies
+                enemies.push({
+                    x: enemyX,
+                    y: enemyY,
+                    width: assets.strawberry.width,
+                    height: assets.strawberry.height,
+                    velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                    active: true,
+                    type: 'strawberry'
+                });
             }
-        } else if (currentLevel === 3) {
-            // Level 3: All cherry enemies
-            enemies.push({
-                x: enemyX,
-                y: enemyY,
-                width: assets.cherry.width,
-                height: assets.cherry.height,
-                velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
-                active: true,
-                type: 'cherry'
-            });
-        } else {
-            // Level 1-2: All strawberry enemies
-            enemies.push({
-                x: enemyX,
-                y: enemyY,
-                width: assets.strawberry.width,
-                height: assets.strawberry.height,
-                velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
-                active: true,
-                type: 'strawberry'
-            });
         }
     }
     
@@ -3182,7 +3233,14 @@ function drawEnemies() {
         
         try {
             // Determine which sprite to use based on enemy type
-            const enemySprite = enemy.type === 'cherry' ? assets.cherry.img : assets.strawberry.img;
+            let enemySprite;
+            if (enemy.type === 'cherry') {
+                enemySprite = assets.cherry.img;
+            } else if (enemy.type === 'banana') {
+                enemySprite = assets.banana.enemies;
+            } else {
+                enemySprite = assets.strawberry.img;
+            }
             
             // Flip all enemies based on their movement direction
             ctx.save();
@@ -3203,8 +3261,15 @@ function drawEnemies() {
             ctx.restore();
         } catch (e) {
             console.error("Error drawing enemy:", e);
-            // Fallback to a simple red circle if image fails
-            ctx.fillStyle = enemy.type === 'cherry' ? '#FF0066' : '#FF0033';
+            // Fallback to a simple colored circle if image fails
+            let fallbackColor = '#FF0033'; // Default strawberry red
+            if (enemy.type === 'cherry') {
+                fallbackColor = '#FF0066';
+            } else if (enemy.type === 'banana') {
+                fallbackColor = '#FFFF00'; // Yellow for banana
+            }
+            
+            ctx.fillStyle = fallbackColor;
             ctx.beginPath();
             ctx.arc(screenX + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2, 0, Math.PI * 2);
             ctx.fill();
@@ -3490,7 +3555,7 @@ function drawLevelSelectionScreen(title) {
     if (useColumnLayout) {
         // Single column layout for very small screens
         const startX = canvas.width / 2 - buttonWidth / 2;
-        const startY = canvas.height * 0.3;
+        const startY = canvas.height * 0.25; // Start higher to fit 5 levels
         
         levels.forEach((level, index) => {
             const x = startX;
@@ -3499,19 +3564,30 @@ function drawLevelSelectionScreen(title) {
             drawLevelButton(x, y, buttonWidth, buttonHeight, level, currentLevel === level.number, true);
         });
     } else {
-        // 2x2 grid layout for larger screens
+        // Mixed layout: 2x2 grid for first 4, then 1 centered for level 5
         const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
         const startY = canvas.height * 0.32;
         
-        levels.forEach((level, index) => {
-            const col = index % 2;
-            const row = Math.floor(index / 2);
+        // Draw first 4 levels in 2x2 grid
+        for (let i = 0; i < 4; i++) {
+            const level = levels[i];
+            const col = i % 2;
+            const row = Math.floor(i / 2);
             
             const x = startX + col * (buttonWidth + spacingX);
             const y = startY + row * (buttonHeight + spacingY);
             
             drawLevelButton(x, y, buttonWidth, buttonHeight, level, currentLevel === level.number, false);
-        });
+        }
+        
+        // Draw Level 5 centered below the 2x2 grid
+        if (levels.length > 4) {
+            const level5 = levels[4];
+            const x = canvas.width / 2 - buttonWidth / 2;
+            const y = startY + 2 * (buttonHeight + spacingY);
+            
+            drawLevelButton(x, y, buttonWidth, buttonHeight, level5, currentLevel === level5.number, false);
+        }
     }
     
     // Instructions at bottom (responsive positioning)
@@ -3522,7 +3598,7 @@ function drawLevelSelectionScreen(title) {
     
     const instructionText = (isMobile || isTouch) ? 
         'Tap a level or use mobile controls below' : 
-        'Click a level or press 1-4 on your keyboard';
+        'Click a level or press 1-5 on your keyboard';
     
     ctx.fillText(instructionText, canvas.width / 2, canvas.height * 0.94);
 }
@@ -3784,11 +3860,11 @@ function handleLevelSelection(x, y) {
     const spacingY = Math.max(15, canvas.height * 0.04);
     
     if (useColumnLayout) {
-        // Single column layout
+        // Single column layout for 5 levels
         const startX = canvas.width / 2 - buttonWidth / 2;
-        const startY = canvas.height * 0.3;
+        const startY = canvas.height * 0.25; // Start higher to fit 5 levels
         
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 5; i++) { // Changed from 4 to 5
             const buttonX = startX;
             const buttonY = startY + i * (buttonHeight + spacingY);
             
@@ -3799,10 +3875,11 @@ function handleLevelSelection(x, y) {
             }
         }
     } else {
-        // 2x2 grid layout
+        // Mixed layout: 2x2 grid for first 4, then 1 centered for level 5
         const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
         const startY = canvas.height * 0.32;
         
+        // First 4 levels in 2x2 grid
         for (let i = 0; i < 4; i++) {
             const col = i % 2;
             const row = Math.floor(i / 2);
@@ -3812,8 +3889,17 @@ function handleLevelSelection(x, y) {
             if (x >= buttonX && x <= buttonX + buttonWidth && 
                 y >= buttonY && y <= buttonY + buttonHeight) {
                 selectLevel(i + 1);
-                break;
+                return;
             }
+        }
+        
+        // Level 5 centered below the 2x2 grid
+        const level5X = canvas.width / 2 - buttonWidth / 2;
+        const level5Y = startY + 2 * (buttonHeight + spacingY);
+        
+        if (x >= level5X && x <= level5X + buttonWidth && 
+            y >= level5Y && y <= level5Y + buttonHeight) {
+            selectLevel(5);
         }
     }
 }
