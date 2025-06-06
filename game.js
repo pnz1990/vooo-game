@@ -1,12 +1,224 @@
-// Game canvas setup
+// Game canvas setup with mobile responsiveness
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreElement = document.getElementById('score');
 const livesElement = document.getElementById('lives');
 
-// Set canvas size to match container
-canvas.width = 800;
-canvas.height = 500;
+// Mobile detection and responsive canvas setup
+let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+let isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+// Canvas dimensions - responsive
+let canvasWidth = 800;
+let canvasHeight = 500;
+let scaleFactor = 1;
+
+// Mobile control variables
+let mobileControls = {
+    left: false,
+    right: false,
+    jump: false,
+    showControls: false
+};
+
+// Initialize responsive canvas
+function initResponsiveCanvas() {
+    const container = document.getElementById('gameContainer');
+    const containerRect = container.getBoundingClientRect();
+    
+    // Calculate scale factor to maintain aspect ratio
+    const aspectRatio = 800 / 500;
+    let newWidth = containerRect.width;
+    let newHeight = containerRect.height;
+    
+    if (newWidth / newHeight > aspectRatio) {
+        newWidth = newHeight * aspectRatio;
+    } else {
+        newHeight = newWidth / aspectRatio;
+    }
+    
+    // Set canvas size
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    canvas.style.width = newWidth + 'px';
+    canvas.style.height = newHeight + 'px';
+    
+    // Calculate scale factor for game coordinates
+    scaleFactor = Math.min(newWidth / canvasWidth, newHeight / canvasHeight);
+    
+    // Add mobile controls if needed
+    if (isMobile || isTouch) {
+        addMobileControls();
+    }
+}
+
+// Add mobile touch controls
+function addMobileControls() {
+    const controlsContainer = document.getElementById('controls');
+    
+    // Clear existing controls except reload button
+    const reloadButton = controlsContainer.querySelector('button');
+    controlsContainer.innerHTML = '';
+    if (reloadButton) {
+        controlsContainer.appendChild(reloadButton);
+    }
+    
+    // Create mobile control buttons
+    const mobileControlsDiv = document.createElement('div');
+    mobileControlsDiv.id = 'mobileControls';
+    mobileControlsDiv.style.cssText = `
+        display: flex;
+        gap: 10px;
+        margin: 10px 0;
+        flex-wrap: wrap;
+        justify-content: center;
+    `;
+    
+    // Left button
+    const leftBtn = document.createElement('button');
+    leftBtn.textContent = '← Left';
+    leftBtn.style.cssText = `
+        background-color: #e74c3c;
+        padding: 15px 20px;
+        font-size: 16px;
+        border-radius: 8px;
+        min-width: 80px;
+    `;
+    
+    // Right button
+    const rightBtn = document.createElement('button');
+    rightBtn.textContent = 'Right →';
+    rightBtn.style.cssText = `
+        background-color: #e74c3c;
+        padding: 15px 20px;
+        font-size: 16px;
+        border-radius: 8px;
+        min-width: 80px;
+    `;
+    
+    // Jump button
+    const jumpBtn = document.createElement('button');
+    jumpBtn.textContent = '↑ Jump';
+    jumpBtn.style.cssText = `
+        background-color: #27ae60;
+        padding: 15px 25px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 8px;
+        min-width: 100px;
+    `;
+    
+    // Add touch event listeners
+    addTouchEvents(leftBtn, 'left');
+    addTouchEvents(rightBtn, 'right');
+    addTouchEvents(jumpBtn, 'jump');
+    
+    mobileControlsDiv.appendChild(leftBtn);
+    mobileControlsDiv.appendChild(jumpBtn);
+    mobileControlsDiv.appendChild(rightBtn);
+    
+    controlsContainer.insertBefore(mobileControlsDiv, controlsContainer.firstChild);
+    
+    // Show mobile controls indicator
+    mobileControls.showControls = true;
+    
+    // Update instructions for mobile
+    const instructions = document.getElementById('instructions');
+    if (instructions) {
+        instructions.innerHTML = `
+            <p><strong>Mobile Controls:</strong> Use the buttons below to move and jump. Double jump available in mid-air!</p>
+            <p>Defeat enemies by jumping on them. Find and defeat the boss to win!</p>
+            <p>Level 1: Strawberry enemies | Level 2: Lava Challenge | Level 3: Cherry enemies | Level 4: Double Boss</p>
+        `;
+    }
+}
+
+// Add touch events to mobile control buttons
+function addTouchEvents(button, action) {
+    // Prevent default touch behaviors
+    button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        mobileControls[action] = true;
+        button.style.opacity = '0.7';
+        
+        // Handle jump action immediately
+        if (action === 'jump') {
+            handleJumpInput();
+        }
+    }, { passive: false });
+    
+    button.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        mobileControls[action] = false;
+        button.style.opacity = '1';
+    }, { passive: false });
+    
+    button.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        mobileControls[action] = false;
+        button.style.opacity = '1';
+    }, { passive: false });
+    
+    // Also handle mouse events for testing
+    button.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        mobileControls[action] = true;
+        button.style.opacity = '0.7';
+        
+        if (action === 'jump') {
+            handleJumpInput();
+        }
+    });
+    
+    button.addEventListener('mouseup', (e) => {
+        e.preventDefault();
+        mobileControls[action] = false;
+        button.style.opacity = '1';
+    });
+    
+    button.addEventListener('mouseleave', (e) => {
+        mobileControls[action] = false;
+        button.style.opacity = '1';
+    });
+}
+
+// Handle jump input (for both keyboard and mobile)
+function handleJumpInput() {
+    if (!gameRunning) return;
+    
+    // First jump when on the ground
+    if (!player.jumping) {
+        player.velocityY = player.jumpPower * speedMultiplier;
+        player.jumping = true;
+        player.canDoubleJump = doubleJumpEnabled;
+    }
+    // Double jump when in the air and double jump is available
+    else if (player.canDoubleJump && !player.doubleJumping) {
+        player.velocityY = player.doubleJumpPower * speedMultiplier;
+        player.doubleJumping = true;
+        player.canDoubleJump = false;
+        createDoubleJumpEffect();
+    }
+}
+
+// Window resize handler
+function handleResize() {
+    initResponsiveCanvas();
+    
+    // Redraw current screen
+    if (levelSelectionMode) {
+        showMessage("VOOO's Adventure");
+    }
+}
+
+// Set canvas size to match container with responsiveness
+initResponsiveCanvas();
+
+// Add resize event listener
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', () => {
+    setTimeout(handleResize, 100); // Delay to ensure orientation change is complete
+});
 
 // Game state
 let gameRunning = false;
@@ -858,9 +1070,10 @@ function gameLoop() {
 
 // Update player position and state
 function updatePlayer() {
-    // Handle keyboard input for movement
+    // Handle keyboard and mobile input for movement
     player.velocityX = 0;
     
+    // Keyboard controls
     if (keys['KeyA'] || keys['ArrowLeft']) {
         player.velocityX = -player.moveSpeed;
         assets.vooo.facingRight = false;
@@ -871,8 +1084,19 @@ function updatePlayer() {
         assets.vooo.facingRight = true;
     }
     
+    // Mobile controls
+    if (mobileControls.left) {
+        player.velocityX = -player.moveSpeed;
+        assets.vooo.facingRight = false;
+    }
+    
+    if (mobileControls.right) {
+        player.velocityX = player.moveSpeed;
+        assets.vooo.facingRight = true;
+    }
+    
     // Handle jumping and double jumping - REMOVED from here to avoid duplicate jumps
-    // Jump handling is now only in the keydown event listener
+    // Jump handling is now only in the keydown event listener and mobile touch events
     
     // Apply gravity
     player.velocityY += gravity;
@@ -1763,17 +1987,21 @@ function drawLevelSelectionScreen(title) {
     ctx.shadowColor = '#FFD700';
     ctx.shadowBlur = glowIntensity;
     ctx.fillStyle = `rgba(255, 215, 0, ${0.8 + titlePulse * 0.2})`;
-    ctx.font = 'bold 36px Arial';
+    
+    // Responsive font size for title
+    const titleFontSize = Math.max(24, Math.min(36, canvas.width * 0.045));
+    ctx.font = `bold ${titleFontSize}px Arial`;
     ctx.textAlign = 'center';
-    ctx.fillText(title, canvas.width / 2, 80);
+    ctx.fillText(title, canvas.width / 2, canvas.height * 0.16);
     
     // Reset shadow
     ctx.shadowBlur = 0;
     
     // Subtitle
     ctx.fillStyle = '#E8E8E8';
-    ctx.font = '18px Arial';
-    ctx.fillText('Choose Your Adventure', canvas.width / 2, 110);
+    const subtitleFontSize = Math.max(14, Math.min(18, canvas.width * 0.0225));
+    ctx.font = `${subtitleFontSize}px Arial`;
+    ctx.fillText('Choose Your Adventure', canvas.width / 2, canvas.height * 0.22);
     
     // Level buttons data
     const levels = [
@@ -1811,33 +2039,59 @@ function drawLevelSelectionScreen(title) {
         }
     ];
     
-    // Draw level buttons in 2x2 grid
-    const buttonWidth = 160;
-    const buttonHeight = 70;
-    const spacingX = 30;
-    const spacingY = 20;
-    const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
-    const startY = 160;
+    // Responsive button layout
+    const baseButtonWidth = 160;
+    const baseButtonHeight = 70;
+    const buttonWidth = Math.max(120, Math.min(baseButtonWidth, canvas.width * 0.2));
+    const buttonHeight = Math.max(50, Math.min(baseButtonHeight, canvas.height * 0.14));
+    const spacingX = Math.max(20, canvas.width * 0.0375);
+    const spacingY = Math.max(15, canvas.height * 0.04);
     
-    levels.forEach((level, index) => {
-        const col = index % 2; // 0 or 1 (left or right column)
-        const row = Math.floor(index / 2); // 0 or 1 (top or bottom row)
-        
-        const x = startX + col * (buttonWidth + spacingX);
-        const y = startY + row * (buttonHeight + spacingY);
-        
-        drawLevelButton(x, y, buttonWidth, buttonHeight, level, currentLevel === level.number);
-    });
+    // Check if we should use single column layout for very small screens
+    const useColumnLayout = canvas.width < 400 || canvas.height < 300;
     
-    // Instructions at bottom (adjusted for 2x2 layout)
+    if (useColumnLayout) {
+        // Single column layout for very small screens
+        const startX = canvas.width / 2 - buttonWidth / 2;
+        const startY = canvas.height * 0.3;
+        
+        levels.forEach((level, index) => {
+            const x = startX;
+            const y = startY + index * (buttonHeight + spacingY);
+            
+            drawLevelButton(x, y, buttonWidth, buttonHeight, level, currentLevel === level.number, true);
+        });
+    } else {
+        // 2x2 grid layout for larger screens
+        const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
+        const startY = canvas.height * 0.32;
+        
+        levels.forEach((level, index) => {
+            const col = index % 2;
+            const row = Math.floor(index / 2);
+            
+            const x = startX + col * (buttonWidth + spacingX);
+            const y = startY + row * (buttonHeight + spacingY);
+            
+            drawLevelButton(x, y, buttonWidth, buttonHeight, level, currentLevel === level.number, false);
+        });
+    }
+    
+    // Instructions at bottom (responsive positioning)
     ctx.fillStyle = '#B0B0B0';
-    ctx.font = '16px Arial';
+    const instructionFontSize = Math.max(12, Math.min(16, canvas.width * 0.02));
+    ctx.font = `${instructionFontSize}px Arial`;
     ctx.textAlign = 'center';
-    ctx.fillText('Click a level or press 1-4 on your keyboard', canvas.width / 2, canvas.height - 30);
+    
+    const instructionText = (isMobile || isTouch) ? 
+        'Tap a level or use mobile controls below' : 
+        'Click a level or press 1-4 on your keyboard';
+    
+    ctx.fillText(instructionText, canvas.width / 2, canvas.height * 0.94);
 }
 
 // Draw individual level button
-function drawLevelButton(x, y, width, height, level, isSelected) {
+function drawLevelButton(x, y, width, height, level, isSelected, isCompact = false) {
     const isHovered = hoveredButton === (level.number - 1);
     
     // Button shadow (larger for hover effect)
@@ -1871,10 +2125,13 @@ function drawLevelButton(x, y, width, height, level, isSelected) {
     ctx.strokeRect(x, y, width, height);
     ctx.shadowBlur = 0; // Reset shadow
     
+    // Responsive sizing based on button dimensions
+    const scale = Math.min(width / 160, height / 70);
+    
     // Level number circle
-    const circleX = x + 20;
+    const circleX = x + (isCompact ? 15 : 20) * scale;
     const circleY = y + height / 2;
-    const circleRadius = isHovered ? 16 : 15;
+    const circleRadius = (isHovered ? 16 : 15) * scale;
     
     ctx.fillStyle = isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.9)';
     ctx.beginPath();
@@ -1882,49 +2139,61 @@ function drawLevelButton(x, y, width, height, level, isSelected) {
     ctx.fill();
     
     ctx.fillStyle = level.color;
-    ctx.font = isHovered ? 'bold 18px Arial' : 'bold 16px Arial';
+    const numberFontSize = Math.max(12, (isHovered ? 18 : 16) * scale);
+    ctx.font = `bold ${numberFontSize}px Arial`;
     ctx.textAlign = 'center';
-    ctx.fillText(level.number.toString(), circleX, circleY + 6);
+    ctx.fillText(level.number.toString(), circleX, circleY + 6 * scale);
     
     // Level icon (positioned to avoid overlap)
-    ctx.font = isHovered ? '20px Arial' : '18px Arial';
-    ctx.fillText(level.icon, x + width - 20, y + 20);
+    const iconFontSize = Math.max(14, (isHovered ? 20 : 18) * scale);
+    ctx.font = `${iconFontSize}px Arial`;
+    ctx.fillText(level.icon, x + width - (isCompact ? 15 : 20) * scale, y + (isCompact ? 15 : 20) * scale);
     
     // Level title (adjusted position to avoid overlap with icon)
     ctx.fillStyle = isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.95)';
-    ctx.font = isHovered ? 'bold 14px Arial' : 'bold 13px Arial';
+    const titleFontSize = Math.max(10, (isHovered ? 14 : 13) * scale);
+    ctx.font = `bold ${titleFontSize}px Arial`;
     ctx.textAlign = 'left';
-    ctx.fillText(level.title, x + 42, y + 22);
+    const titleX = x + (isCompact ? 35 : 42) * scale;
+    const titleY = y + (isCompact ? 18 : 22) * scale;
+    ctx.fillText(level.title, titleX, titleY);
     
-    // Level subtitle
-    ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.8)';
-    ctx.font = isHovered ? '11px Arial' : '10px Arial';
-    ctx.fillText(level.subtitle, x + 42, y + 38);
-    
-    // Difficulty stars (positioned below subtitle)
-    const stars = level.number;
-    ctx.fillStyle = isHovered ? '#FFD700' : '#FFA500';
-    ctx.font = '10px Arial';
-    let starText = '';
-    for (let i = 0; i < stars; i++) {
-        starText += '★';
+    // Level subtitle (only show if there's enough space)
+    if (height > 50) {
+        ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.8)';
+        const subtitleFontSize = Math.max(8, (isHovered ? 11 : 10) * scale);
+        ctx.font = `${subtitleFontSize}px Arial`;
+        ctx.fillText(level.subtitle, titleX, titleY + 16 * scale);
+        
+        // Difficulty stars (positioned below subtitle)
+        const stars = level.number;
+        ctx.fillStyle = isHovered ? '#FFD700' : '#FFA500';
+        const starFontSize = Math.max(8, 10 * scale);
+        ctx.font = `${starFontSize}px Arial`;
+        let starText = '';
+        for (let i = 0; i < stars; i++) {
+            starText += '★';
+        }
+        for (let i = stars; i < 4; i++) {
+            starText += '☆';
+        }
+        ctx.fillText(starText, titleX, titleY + 30 * scale);
     }
-    for (let i = stars; i < 4; i++) {
-        starText += '☆';
+    
+    // Speed indicator (bottom right, only if there's space)
+    if (width > 100) {
+        let speedText = '';
+        if (level.number === 1) speedText = '85%';
+        else if (level.number === 2) speedText = '100%';
+        else if (level.number === 3) speedText = '110%';
+        else if (level.number === 4) speedText = '120%';
+        
+        ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.6)';
+        const speedFontSize = Math.max(7, 9 * scale);
+        ctx.font = `${speedFontSize}px Arial`;
+        ctx.textAlign = 'right';
+        ctx.fillText(speedText, x + width - 8 * scale, y + height - 6 * scale);
     }
-    ctx.fillText(starText, x + 42, y + 52);
-    
-    // Speed indicator (bottom right)
-    let speedText = '';
-    if (level.number === 1) speedText = '85%';
-    else if (level.number === 2) speedText = '100%';
-    else if (level.number === 3) speedText = '110%';
-    else if (level.number === 4) speedText = '120%';
-    
-    ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.6)';
-    ctx.font = '9px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(speedText, x + width - 8, y + height - 6);
 }
 
 // Draw regular game message (non-level selection)
@@ -1984,80 +2253,152 @@ let mouseX = 0;
 let mouseY = 0;
 let hoveredButton = -1;
 
-// Mouse move event for hover effects
+// Mouse move event for hover effects (desktop only)
 canvas.addEventListener('mousemove', (e) => {
-    if (levelSelectionMode && !gameRunning) {
+    if ((levelSelectionMode && !gameRunning) && !isMobile) {
         const rect = canvas.getBoundingClientRect();
         mouseX = e.clientX - rect.left;
         mouseY = e.clientY - rect.top;
         
-        // Check which button is being hovered (2x2 grid layout)
-        const buttonWidth = 160;
-        const buttonHeight = 70;
-        const spacingX = 30;
-        const spacingY = 20;
-        const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
-        const startY = 160;
+        // Convert screen coordinates to canvas coordinates
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        mouseX *= scaleX;
+        mouseY *= scaleY;
         
-        hoveredButton = -1;
+        updateHoveredButton();
+    }
+});
+
+// Touch events for mobile
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (levelSelectionMode && !gameRunning) {
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        const touchX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+        const touchY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+        
+        handleLevelSelection(touchX, touchY);
+    }
+}, { passive: false });
+
+// Update hovered button based on mouse/touch position
+function updateHoveredButton() {
+    const useColumnLayout = canvas.width < 400 || canvas.height < 300;
+    const baseButtonWidth = 160;
+    const baseButtonHeight = 70;
+    const buttonWidth = Math.max(120, Math.min(baseButtonWidth, canvas.width * 0.2));
+    const buttonHeight = Math.max(50, Math.min(baseButtonHeight, canvas.height * 0.14));
+    const spacingX = Math.max(20, canvas.width * 0.0375);
+    const spacingY = Math.max(15, canvas.height * 0.04);
+    
+    hoveredButton = -1;
+    
+    if (useColumnLayout) {
+        // Single column layout
+        const startX = canvas.width / 2 - buttonWidth / 2;
+        const startY = canvas.height * 0.3;
+        
+        for (let i = 0; i < 4; i++) {
+            const buttonX = startX;
+            const buttonY = startY + i * (buttonHeight + spacingY);
+            
+            if (mouseX >= buttonX && mouseX <= buttonX + buttonWidth && 
+                mouseY >= buttonY && mouseY <= buttonY + buttonHeight) {
+                hoveredButton = i;
+                canvas.style.cursor = 'pointer';
+                break;
+            }
+        }
+    } else {
+        // 2x2 grid layout
+        const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
+        const startY = canvas.height * 0.32;
+        
         for (let i = 0; i < 4; i++) {
             const col = i % 2;
             const row = Math.floor(i / 2);
             const buttonX = startX + col * (buttonWidth + spacingX);
             const buttonY = startY + row * (buttonHeight + spacingY);
             
-            if (mouseX >= buttonX && 
-                mouseX <= buttonX + buttonWidth && 
-                mouseY >= buttonY && 
-                mouseY <= buttonY + buttonHeight) {
+            if (mouseX >= buttonX && mouseX <= buttonX + buttonWidth && 
+                mouseY >= buttonY && mouseY <= buttonY + buttonHeight) {
                 hoveredButton = i;
                 canvas.style.cursor = 'pointer';
                 break;
             }
         }
+    }
+    
+    if (hoveredButton === -1) {
+        canvas.style.cursor = 'default';
+    }
+}
+
+// Handle level selection (both mouse and touch)
+function handleLevelSelection(x, y) {
+    const useColumnLayout = canvas.width < 400 || canvas.height < 300;
+    const baseButtonWidth = 160;
+    const baseButtonHeight = 70;
+    const buttonWidth = Math.max(120, Math.min(baseButtonWidth, canvas.width * 0.2));
+    const buttonHeight = Math.max(50, Math.min(baseButtonHeight, canvas.height * 0.14));
+    const spacingX = Math.max(20, canvas.width * 0.0375);
+    const spacingY = Math.max(15, canvas.height * 0.04);
+    
+    if (useColumnLayout) {
+        // Single column layout
+        const startX = canvas.width / 2 - buttonWidth / 2;
+        const startY = canvas.height * 0.3;
         
-        if (hoveredButton === -1) {
-            canvas.style.cursor = 'default';
+        for (let i = 0; i < 4; i++) {
+            const buttonX = startX;
+            const buttonY = startY + i * (buttonHeight + spacingY);
+            
+            if (x >= buttonX && x <= buttonX + buttonWidth && 
+                y >= buttonY && y <= buttonY + buttonHeight) {
+                selectLevel(i + 1);
+                break;
+            }
+        }
+    } else {
+        // 2x2 grid layout
+        const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
+        const startY = canvas.height * 0.32;
+        
+        for (let i = 0; i < 4; i++) {
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const buttonX = startX + col * (buttonWidth + spacingX);
+            const buttonY = startY + row * (buttonHeight + spacingY);
+            
+            if (x >= buttonX && x <= buttonX + buttonWidth && 
+                y >= buttonY && y <= buttonY + buttonHeight) {
+                selectLevel(i + 1);
+                break;
+            }
         }
     }
-});
+}
+
+// Select level and start game
+function selectLevel(levelNumber) {
+    currentLevel = levelNumber;
+    levelSelectionMode = false;
+    initLevel();
+    gameRunning = true;
+    gameLoop();
+}
 
 // Handle mouse clicks for level selection
 canvas.addEventListener('click', (e) => {
     if (levelSelectionMode && !gameRunning) {
         // Get mouse position relative to canvas
         const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
+        const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
         
-        // Button dimensions (2x2 grid layout)
-        const buttonWidth = 160;
-        const buttonHeight = 70;
-        const spacingX = 30;
-        const spacingY = 20;
-        const startX = canvas.width / 2 - buttonWidth - spacingX / 2;
-        const startY = 160;
-        
-        // Check each level button
-        for (let i = 0; i < 4; i++) {
-            const col = i % 2;
-            const row = Math.floor(i / 2);
-            const buttonX = startX + col * (buttonWidth + spacingX);
-            const buttonY = startY + row * (buttonHeight + spacingY);
-            
-            if (mouseX >= buttonX && 
-                mouseX <= buttonX + buttonWidth && 
-                mouseY >= buttonY && 
-                mouseY <= buttonY + buttonHeight) {
-                
-                currentLevel = i + 1;
-                levelSelectionMode = false;
-                initLevel();
-                gameRunning = true;
-                gameLoop();
-                break;
-            }
-        }
+        handleLevelSelection(clickX, clickY);
     }
 });
 

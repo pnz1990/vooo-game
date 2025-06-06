@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>VOOO's Adventure</title>
     <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
         body {
             margin: 0;
             padding: 0;
@@ -16,22 +21,35 @@
             background-color: #222;
             font-family: Arial, sans-serif;
             color: white;
+            overflow-x: hidden;
+        }
+        
+        h1 {
+            margin: 10px 0;
+            color: #3498db;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            text-align: center;
         }
         
         #gameContainer {
             position: relative;
-            width: 800px;
-            height: 500px;
+            width: min(800px, 95vw);
+            height: min(500px, 60vh);
+            max-width: 800px;
+            max-height: 500px;
             border: 3px solid #444;
             border-radius: 5px;
             overflow: hidden;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            margin: 10px;
         }
         
         #gameCanvas {
             background-color: #87CEEB;
             width: 100%;
             height: 100%;
+            display: block;
         }
         
         #gameUI {
@@ -39,7 +57,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            padding: 15px 20px;
+            padding: clamp(8px, 2vw, 15px) clamp(10px, 3vw, 20px);
             display: flex;
             justify-content: space-between;
             z-index: 10;
@@ -48,45 +66,112 @@
         
         #score, #lives {
             background-color: rgba(0, 0, 0, 0.7);
-            padding: 8px 12px;
+            padding: clamp(4px, 1vw, 8px) clamp(6px, 1.5vw, 12px);
             border-radius: 8px;
             font-weight: bold;
             border: 1px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            font-size: clamp(0.8rem, 2vw, 1rem);
         }
         
         #controls {
-            margin-top: 20px;
+            margin-top: 10px;
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: clamp(8px, 2vw, 10px) clamp(15px, 3vw, 20px);
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
             background-color: #3498db;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
+            touch-action: manipulation;
         }
         
-        button:hover {
+        button:hover, button:active {
             background-color: #2980b9;
         }
         
-        h1 {
-            margin-bottom: 10px;
-            color: #3498db;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-        }
-        
         #instructions {
-            margin-top: 20px;
-            max-width: 800px;
+            margin-top: 15px;
+            max-width: min(800px, 95vw);
             text-align: center;
             line-height: 1.5;
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            padding: 0 10px;
+        }
+        
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            #gameContainer {
+                width: 95vw;
+                height: 50vh;
+                min-height: 300px;
+                max-height: 400px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+                margin: 5px 0;
+            }
+            
+            #instructions {
+                font-size: 0.9rem;
+                margin-top: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #gameContainer {
+                width: 98vw;
+                height: 45vh;
+                min-height: 280px;
+                max-height: 350px;
+                border-width: 2px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            #score, #lives {
+                font-size: 0.8rem;
+                padding: 4px 8px;
+            }
+            
+            #instructions {
+                font-size: 0.8rem;
+            }
+        }
+        
+        /* Landscape mobile orientation */
+        @media (max-height: 500px) and (orientation: landscape) {
+            body {
+                min-height: auto;
+            }
+            
+            #gameContainer {
+                height: 85vh;
+                max-height: 400px;
+            }
+            
+            h1 {
+                margin: 5px 0;
+            }
+            
+            #instructions {
+                margin-top: 5px;
+            }
         }
     </style>
 </head>
@@ -102,7 +187,7 @@
     </div>
     
     <div id="controls">
-        <!-- Only keep the reload button which will be added via JavaScript -->
+        <!-- Mobile controls will be added via JavaScript -->
     </div>
     
     <div id="instructions">
@@ -112,21 +197,24 @@
     </div>
     
     <!-- Add a version parameter to prevent caching -->
-    <script src="game.js?v=1.2.0"></script>
+    <script src="game.js?v=3.0.0"></script>
     <script src="js/explosion.js?v=1.0.0"></script>
     
     <script>
-        // Force reload without cache
+        // Mobile-friendly reload function
         function forceReload() {
             window.location.reload(true);
         }
         
-        // Add a reload button
+        // Add mobile controls and reload button
+        const controlsContainer = document.getElementById('controls');
+        
+        // Reload button
         const reloadButton = document.createElement('button');
         reloadButton.textContent = 'Reload Game';
         reloadButton.style.backgroundColor = '#9b59b6';
         reloadButton.addEventListener('click', forceReload);
-        document.getElementById('controls').appendChild(reloadButton);
+        controlsContainer.appendChild(reloadButton);
     </script>
 </body>
 </html>
