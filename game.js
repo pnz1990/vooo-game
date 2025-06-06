@@ -1397,7 +1397,7 @@ function drawBananaFactory() {
     });
     
     // Draw factory hooks
-    bananaFactory.factoryHooks.forEach(hook => {
+    bananaFactory.factoryHooks.forEach((hook, index) => {
         const hookX = hook.x + Math.sin(hook.swingAngle) * 100 - cameraX;
         const hookY = hook.y + Math.cos(hook.swingAngle) * 50;
         
@@ -1410,9 +1410,19 @@ function drawBananaFactory() {
             ctx.lineTo(hookX + hook.width/2, hookY);
             ctx.stroke();
             
-            // Platform
-            ctx.fillStyle = '#8B4513';
+            // Platform - make it more visible
+            ctx.fillStyle = '#D2691E'; // Orange-brown for better visibility
             ctx.fillRect(hookX, hookY, hook.width, hook.height);
+            
+            // Add border for visibility
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(hookX, hookY, hook.width, hook.height);
+            
+            // Debug: Add text to show it's working
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '12px Arial';
+            ctx.fillText(`Hook ${index}`, hookX + 5, hookY - 5);
         }
     });
     
@@ -3258,8 +3268,14 @@ function drawPlatforms() {
         // Skip if off-screen
         if (screenX + platform.width < 0 || screenX > canvas.width) return;
         
-        // Skip drawing non-ground platforms in boss area (but not for Level 5)
-        if (currentLevel !== 5 && platform.x > 7400 && platform.type !== 'ground') return;
+        // Skip drawing non-ground platforms in boss area for all levels
+        if (currentLevel === 5) {
+            // Level 5: Skip platforms in boss area (x > 3000) except ground
+            if (platform.x > 3000 && platform.type !== 'ground') return;
+        } else {
+            // Other levels: Skip platforms in boss area (x > 7400) except ground
+            if (platform.x > 7400 && platform.type !== 'ground') return;
+        }
         
         // LEVEL 5: FORCE VISIBLE PLATFORMS - NO TILE SPRITES EVER
         if (currentLevel === 5) {
