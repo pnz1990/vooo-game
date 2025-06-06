@@ -138,6 +138,7 @@ function addMobileControls() {
     addTouchEvents(rightBtn, 'right');
     
     // Arrange buttons: LEFT - JUMP - RIGHT
+    // Arrange buttons: LEFT - JUMP - RIGHT (3 buttons only)
     mobileControlsDiv.appendChild(leftBtn);
     mobileControlsDiv.appendChild(jumpBtn);
     mobileControlsDiv.appendChild(rightBtn);
