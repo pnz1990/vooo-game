@@ -1811,9 +1811,21 @@ function loadAssets() {
     if (currentLevel === 5) {
         assets.banana.enemies = new Image();
         assets.banana.enemies.src = 'banana-enemies.png';
+        assets.banana.enemies.onload = function() {
+            console.log('Banana enemies image loaded successfully');
+        };
+        assets.banana.enemies.onerror = function() {
+            console.error('Failed to load banana enemies image');
+        };
         
         assets.banana.boss = new Image();
         assets.banana.boss.src = 'banana-boss.png';
+        assets.banana.boss.onload = function() {
+            console.log('Banana boss image loaded successfully');
+        };
+        assets.banana.boss.onerror = function() {
+            console.error('Failed to load banana boss image');
+        };
         
         // Make banana enemies bigger for better visibility
         assets.banana.width = 60;
@@ -3078,26 +3090,70 @@ function drawPlatforms() {
         // Skip drawing non-ground platforms in boss area
         if (platform.x > 7400 && platform.type !== 'ground') return;
         
-        if (platform.type === 'ground') {
-            // Draw ground with tiles
-            for (let x = 0; x < platform.width; x += assets.tiles.size) {
-                ctx.drawImage(
-                    assets.tiles.img,
-                    0, 0, assets.tiles.size, assets.tiles.size,
-                    screenX + x, platform.y, 
-                    assets.tiles.size, assets.tiles.size
-                );
+        try {
+            if (platform.type === 'ground') {
+                // Draw ground with tiles or fallback
+                if (assets.tiles.img) {
+                    for (let x = 0; x < platform.width; x += assets.tiles.size) {
+                        ctx.drawImage(
+                            assets.tiles.img,
+                            0, 0, assets.tiles.size, assets.tiles.size,
+                            screenX + x, platform.y, 
+                            assets.tiles.size, assets.tiles.size
+                        );
+                    }
+                } else {
+                    // Fallback ground rendering
+                    ctx.fillStyle = currentLevel === 5 ? '#8B4513' : '#654321'; // Brown for factory, darker for others
+                    ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                    
+                    // Add texture lines
+                    ctx.strokeStyle = currentLevel === 5 ? '#A0522D' : '#8B4513';
+                    ctx.lineWidth = 1;
+                    for (let x = 0; x < platform.width; x += 20) {
+                        ctx.beginPath();
+                        ctx.moveTo(screenX + x, platform.y);
+                        ctx.lineTo(screenX + x, platform.y + platform.height);
+                        ctx.stroke();
+                    }
+                }
+            } else {
+                // Draw platform with tiles or fallback
+                if (assets.tiles.img) {
+                    for (let x = 0; x < platform.width; x += assets.tiles.size) {
+                        ctx.drawImage(
+                            assets.tiles.img,
+                            assets.tiles.size, 0, assets.tiles.size, assets.tiles.size,
+                            screenX + x, platform.y, 
+                            assets.tiles.size, assets.tiles.size
+                        );
+                    }
+                } else {
+                    // Fallback platform rendering
+                    ctx.fillStyle = currentLevel === 5 ? '#C0C0C0' : '#808080'; // Silver for factory, gray for others
+                    ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                    
+                    // Add platform border
+                    ctx.strokeStyle = currentLevel === 5 ? '#A0A0A0' : '#606060';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
+                    
+                    // Add rivets for factory platforms
+                    if (currentLevel === 5) {
+                        ctx.fillStyle = '#808080';
+                        for (let x = 10; x < platform.width - 10; x += 20) {
+                            ctx.beginPath();
+                            ctx.arc(screenX + x, platform.y + platform.height/2, 2, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
             }
-        } else {
-            // Draw platform with tiles
-            for (let x = 0; x < platform.width; x += assets.tiles.size) {
-                ctx.drawImage(
-                    assets.tiles.img,
-                    assets.tiles.size, 0, assets.tiles.size, assets.tiles.size,
-                    screenX + x, platform.y, 
-                    assets.tiles.size, assets.tiles.size
-                );
-            }
+        } catch (e) {
+            console.error("Error drawing platform:", e);
+            // Emergency fallback - simple colored rectangle
+            ctx.fillStyle = platform.type === 'ground' ? '#654321' : '#808080';
+            ctx.fillRect(screenX, platform.y, platform.width, platform.height);
         }
     });
 }
@@ -3281,9 +3337,11 @@ function drawEnemies() {
             if (enemy.type === 'cherry' && assets.cherry.img && assets.cherry.img.complete && assets.cherry.img.naturalWidth > 0) {
                 enemySprite = assets.cherry.img;
                 useSprite = true;
-            } else if (enemy.type === 'banana' && assets.banana.enemies && assets.banana.enemies.complete && assets.banana.enemies.naturalWidth > 0) {
+            } else if (enemy.type === 'banana' && assets.banana.enemies && assets.banana.enemies.complete) {
+                // Less strict validation for banana enemies - just check if complete
                 enemySprite = assets.banana.enemies;
                 useSprite = true;
+                console.log('Using banana enemy sprite');
             } else if (enemy.type === 'strawberry' && assets.strawberry.img && assets.strawberry.img.complete && assets.strawberry.img.naturalWidth > 0) {
                 enemySprite = assets.strawberry.img;
                 useSprite = true;
@@ -3309,6 +3367,9 @@ function drawEnemies() {
                 ctx.restore();
             } else {
                 // Fallback to professional-looking shapes if image fails or isn't loaded
+                if (enemy.type === 'banana') {
+                    console.log('Using banana enemy fallback rendering');
+                }
                 drawEnemyFallback(screenX, enemy.y, enemy.width, enemy.height, enemy.type, enemy.velocityX < 0);
             }
         } catch (e) {
