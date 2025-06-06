@@ -2718,6 +2718,11 @@ function gameLoop(currentTime = performance.now()) {
         // Draw platforms
         drawPlatforms();
         
+        // Debug: Draw all platforms with bright colors for Level 5
+        if (currentLevel === 5) {
+            drawDebugPlatforms();
+        }
+        
         // Draw obstacles
         drawObstacles();
         
@@ -2726,7 +2731,9 @@ function gameLoop(currentTime = performance.now()) {
         
         // Level 5: Draw Banana Factory elements
         if (currentLevel === 5) {
-            drawBananaFactory();
+            // Temporarily disable factory background to see if it's covering platforms
+            // drawBananaFactory();
+            console.log("Skipping factory background to test platform visibility");
         }
         
         // Draw player
@@ -3280,6 +3287,10 @@ function drawBackground() {
 
 // Draw platforms
 function drawPlatforms() {
+    if (currentLevel === 5) {
+        console.log(`Drawing ${platforms.length} platforms for Level 5`);
+    }
+    
     platforms.forEach(platform => {
         const screenX = platform.x - cameraX;
         
@@ -3289,14 +3300,74 @@ function drawPlatforms() {
         // Skip drawing non-ground platforms in boss area (but not for Level 5)
         if (currentLevel !== 5 && platform.x > 7400 && platform.type !== 'ground') return;
         
+        // LEVEL 5: FORCE VISIBLE PLATFORMS - NO TILE SPRITES EVER
+        if (currentLevel === 5) {
+            console.log(`Drawing Level 5 platform at x:${platform.x}, y:${platform.y}, screenX:${screenX}`);
+            
+            // ALWAYS draw platforms with maximum visibility for Level 5
+            if (platform.type === 'ground') {
+                // Ground platforms - bright and visible
+                ctx.fillStyle = '#4A5568'; // Dark blue-gray ground
+                ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                
+                // Bright top edge
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(screenX, platform.y, platform.width, 3);
+                
+                // Grid pattern
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < platform.width; x += 20) {
+                    ctx.beginPath();
+                    ctx.moveTo(screenX + x, platform.y);
+                    ctx.lineTo(screenX + x, platform.y + platform.height);
+                    ctx.stroke();
+                }
+            } else {
+                // Regular platforms - MAXIMUM VISIBILITY
+                ctx.fillStyle = '#FFFFFF'; // Pure white base
+                ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                
+                // Thick black border
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 5;
+                ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
+                
+                // Bright colored stripes for visibility
+                ctx.fillStyle = '#FF0000'; // Red top
+                ctx.fillRect(screenX, platform.y, platform.width, 4);
+                ctx.fillStyle = '#00FF00'; // Green bottom
+                ctx.fillRect(screenX, platform.y + platform.height - 4, platform.width, 4);
+                
+                // Yellow side markers
+                ctx.fillStyle = '#FFFF00';
+                ctx.fillRect(screenX, platform.y, 4, platform.height);
+                ctx.fillRect(screenX + platform.width - 4, platform.y, 4, platform.height);
+                
+                // Large visible rivets
+                ctx.fillStyle = '#0000FF'; // Blue rivets
+                for (let x = 20; x < platform.width - 20; x += 40) {
+                    ctx.beginPath();
+                    ctx.arc(screenX + x, platform.y + platform.height/2, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Debug text on high platforms
+                if (platform.y < 300) {
+                    ctx.fillStyle = '#000000';
+                    ctx.font = '12px Arial';
+                    ctx.fillText(`P:${Math.round(platform.x)},${Math.round(platform.y)}`, screenX + 5, platform.y + 15);
+                }
+            }
+            return; // Skip all other rendering logic for Level 5
+        }
+        
+        // OTHER LEVELS: Use normal tile rendering
         try {
-            // For Level 5, ALWAYS use fallback rendering to ensure visibility
-            const useTileSprites = currentLevel !== 5 && assets.tiles.img && 
-                                 assets.tiles.img.complete && assets.tiles.img.naturalWidth > 0;
+            const useTileSprites = assets.tiles.img && assets.tiles.img.complete && assets.tiles.img.naturalWidth > 0;
             
             if (platform.type === 'ground') {
                 if (useTileSprites) {
-                    // Use tile sprites for other levels
                     for (let x = 0; x < platform.width; x += assets.tiles.size) {
                         ctx.drawImage(
                             assets.tiles.img,
@@ -3306,58 +3377,20 @@ function drawPlatforms() {
                         );
                     }
                 } else {
-                    // Fallback ground rendering with enhanced factory theme
-                    if (currentLevel === 5) {
-                        // Factory floor - industrial concrete look
-                        const groundGradient = ctx.createLinearGradient(screenX, platform.y, screenX, platform.y + platform.height);
-                        groundGradient.addColorStop(0, '#5D6D7E');
-                        groundGradient.addColorStop(0.3, '#4A5568');
-                        groundGradient.addColorStop(0.7, '#2D3748');
-                        groundGradient.addColorStop(1, '#1A202C');
-                        ctx.fillStyle = groundGradient;
-                        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-                        
-                        // Concrete texture with grid pattern
-                        ctx.strokeStyle = '#34495E';
-                        ctx.lineWidth = 1;
-                        for (let x = 0; x < platform.width; x += 40) {
-                            ctx.beginPath();
-                            ctx.moveTo(screenX + x, platform.y);
-                            ctx.lineTo(screenX + x, platform.y + platform.height);
-                            ctx.stroke();
-                        }
-                        
-                        // Horizontal lines for concrete blocks
-                        for (let y = 0; y < platform.height; y += 20) {
-                            ctx.beginPath();
-                            ctx.moveTo(screenX, platform.y + y);
-                            ctx.lineTo(screenX + platform.width, platform.y + y);
-                            ctx.stroke();
-                        }
-                        
-                        // Factory floor edge highlight
-                        ctx.fillStyle = '#7F8C8D';
-                        ctx.fillRect(screenX, platform.y, platform.width, 2);
-                    } else {
-                        // Other levels - brown ground
-                        ctx.fillStyle = '#654321';
-                        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-                        
-                        // Add texture lines
-                        ctx.strokeStyle = '#8B4513';
-                        ctx.lineWidth = 1;
-                        for (let x = 0; x < platform.width; x += 20) {
-                            ctx.beginPath();
-                            ctx.moveTo(screenX + x, platform.y);
-                            ctx.lineTo(screenX + x, platform.y + platform.height);
-                            ctx.stroke();
-                        }
+                    ctx.fillStyle = '#654321';
+                    ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                    
+                    ctx.strokeStyle = '#8B4513';
+                    ctx.lineWidth = 1;
+                    for (let x = 0; x < platform.width; x += 20) {
+                        ctx.beginPath();
+                        ctx.moveTo(screenX + x, platform.y);
+                        ctx.lineTo(screenX + x, platform.y + platform.height);
+                        ctx.stroke();
                     }
                 }
             } else {
-                // Platform rendering
                 if (useTileSprites) {
-                    // Use tile sprites for other levels
                     for (let x = 0; x < platform.width; x += assets.tiles.size) {
                         ctx.drawImage(
                             assets.tiles.img,
@@ -3367,91 +3400,48 @@ function drawPlatforms() {
                         );
                     }
                 } else {
-                    // Fallback platform rendering with enhanced factory theme
-                    if (currentLevel === 5) {
-                        // Factory platforms - industrial metallic design with maximum visibility
-                        const platformGradient = ctx.createLinearGradient(screenX, platform.y, screenX, platform.y + platform.height);
-                        platformGradient.addColorStop(0, '#ECF0F1'); // Very light metallic
-                        platformGradient.addColorStop(0.5, '#BDC3C7'); // Medium metallic
-                        platformGradient.addColorStop(1, '#95A5A6'); // Darker metallic
-                        ctx.fillStyle = platformGradient;
-                        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-                        
-                        // Strong industrial border for visibility
-                        ctx.strokeStyle = '#2C3E50';
-                        ctx.lineWidth = 4;
-                        ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
-                        
-                        // High-contrast safety stripes
-                        ctx.fillStyle = '#F39C12'; // Orange
-                        ctx.fillRect(screenX, platform.y, platform.width, 4);
-                        ctx.fillStyle = '#E74C3C'; // Red
-                        ctx.fillRect(screenX, platform.y + platform.height - 4, platform.width, 4);
-                        
-                        // Industrial rivets with high contrast
-                        for (let x = 15; x < platform.width - 15; x += 30) {
-                            // Rivet shadow for depth
-                            ctx.fillStyle = '#34495E';
-                            ctx.beginPath();
-                            ctx.arc(screenX + x + 1, platform.y + platform.height/2 + 1, 5, 0, Math.PI * 2);
-                            ctx.fill();
-                            
-                            // Rivet highlight
-                            ctx.fillStyle = '#FFFFFF';
-                            ctx.beginPath();
-                            ctx.arc(screenX + x, platform.y + platform.height/2, 5, 0, Math.PI * 2);
-                            ctx.fill();
-                            
-                            // Rivet center
-                            ctx.fillStyle = '#7F8C8D';
-                            ctx.beginPath();
-                            ctx.arc(screenX + x, platform.y + platform.height/2, 3, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                        
-                        // Platform texture lines for industrial look
-                        ctx.strokeStyle = '#85929E';
-                        ctx.lineWidth = 1;
-                        for (let i = 1; i < 4; i++) {
-                            const lineY = platform.y + (platform.height * i) / 4;
-                            ctx.beginPath();
-                            ctx.moveTo(screenX + 5, lineY);
-                            ctx.lineTo(screenX + platform.width - 5, lineY);
-                            ctx.stroke();
-                        }
-                        
-                        // Debug: Add bright indicator for high platforms
-                        if (platform.y < 200) {
-                            ctx.fillStyle = '#00FF00'; // Bright green indicator
-                            ctx.fillRect(screenX, platform.y - 5, platform.width, 3);
-                            ctx.fillStyle = '#FF00FF'; // Magenta indicator
-                            ctx.fillRect(screenX, platform.y + platform.height + 2, platform.width, 3);
-                        }
-                    } else {
-                        // Other levels
-                        ctx.fillStyle = '#808080';
-                        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-                        
-                        ctx.strokeStyle = '#606060';
-                        ctx.lineWidth = 2;
-                        ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
-                    }
+                    ctx.fillStyle = '#808080';
+                    ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                    
+                    ctx.strokeStyle = '#606060';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
                 }
             }
         } catch (e) {
             console.error("Error drawing platform:", e);
-            // Emergency fallback - always visible
-            if (currentLevel === 5) {
-                ctx.fillStyle = '#FFFFFF'; // Pure white for emergency visibility
-                ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-                ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
-            } else {
-                ctx.fillStyle = platform.type === 'ground' ? '#654321' : '#808080';
-                ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-            }
+            ctx.fillStyle = platform.type === 'ground' ? '#654321' : '#808080';
+            ctx.fillRect(screenX, platform.y, platform.width, platform.height);
         }
+    });
+}
+
+// Debug function to draw all platforms with bright colors (Level 5 only)
+function drawDebugPlatforms() {
+    if (currentLevel !== 5) return;
+    
+    platforms.forEach((platform, index) => {
+        const screenX = platform.x - cameraX;
+        
+        // Draw regardless of screen bounds for debugging
+        const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
+        const color = colors[index % colors.length];
+        
+        // Bright colored rectangle
+        ctx.fillStyle = color;
+        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+        
+        // Black border
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
+        
+        // Platform info text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '10px Arial';
+        ctx.fillText(`${index}: ${platform.x},${platform.y}`, screenX + 2, platform.y + 12);
+        ctx.fillText(`${platform.width}x${platform.height}`, screenX + 2, platform.y + 24);
+        ctx.fillText(platform.type, screenX + 2, platform.y + 36);
     });
 }
 
