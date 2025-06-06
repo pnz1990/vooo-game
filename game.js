@@ -2333,10 +2333,52 @@ function initBananaFactory() {
     bananaBoss.x = 3800;
     bananaBoss.y = 300;
     bananaBoss.health = GAME_CONFIG.BOSS.BANANA_BOSS_HITS;
+    bananaBoss.maxHealth = GAME_CONFIG.BOSS.BANANA_BOSS_HITS;
     bananaBoss.active = false; // Activated when player gets close
     bananaBoss.invulnerable = false;
     bananaBoss.invulnerableTimer = 0;
     bananaBoss.lastAttack = 0;
+    
+    // Create banana enemies for Level 5
+    enemies = []; // Clear existing enemies
+    const bananaEnemyCount = 25;
+    
+    for (let i = 0; i < bananaEnemyCount; i++) {
+        const enemyX = 700 + i * 120 + Math.random() * 80;
+        
+        // Skip if too close to boss area
+        if (enemyX >= 3600) continue;
+        
+        // Position on ground or platforms
+        let enemyY = canvas.height - 40 - 30; // Default ground position
+        let enemyWidth = 30;
+        let enemyHeight = 30;
+        
+        // Sometimes place on platforms
+        if (Math.random() < 0.3) {
+            const nearbyPlatforms = platforms.filter(p => 
+                Math.abs(p.x + p.width/2 - enemyX) < 100 && 
+                p.type === 'platform'
+            );
+            
+            if (nearbyPlatforms.length > 0) {
+                const platform = nearbyPlatforms[0];
+                enemyY = platform.y - enemyHeight;
+            }
+        }
+        
+        enemies.push({
+            x: enemyX,
+            y: enemyY,
+            width: enemyWidth,
+            height: enemyHeight,
+            velocityX: (Math.random() > 0.5 ? -1.2 : 1.2) * speedMultiplier,
+            active: true,
+            type: 'banana',
+            lastThrow: 0,
+            throwCooldown: 2000 + Math.random() * 1000 // 2-3 seconds between throws
+        });
+    }
     
     // Replace regular enemies with banana enemies
     enemies = [];
@@ -3234,47 +3276,179 @@ function drawEnemies() {
         try {
             // Determine which sprite to use based on enemy type
             let enemySprite;
-            if (enemy.type === 'cherry') {
+            let useSprite = false;
+            
+            if (enemy.type === 'cherry' && assets.cherry.img && assets.cherry.img.complete && assets.cherry.img.naturalWidth > 0) {
                 enemySprite = assets.cherry.img;
-            } else if (enemy.type === 'banana') {
+                useSprite = true;
+            } else if (enemy.type === 'banana' && assets.banana.enemies && assets.banana.enemies.complete && assets.banana.enemies.naturalWidth > 0) {
                 enemySprite = assets.banana.enemies;
-            } else {
+                useSprite = true;
+            } else if (enemy.type === 'strawberry' && assets.strawberry.img && assets.strawberry.img.complete && assets.strawberry.img.naturalWidth > 0) {
                 enemySprite = assets.strawberry.img;
+                useSprite = true;
             }
             
-            // Flip all enemies based on their movement direction
-            ctx.save();
-            if (enemy.velocityX < 0) {
-                // Flip horizontally for left-moving enemies
-                ctx.translate(screenX + enemy.width, enemy.y);
-                ctx.scale(-1, 1);
-                ctx.drawImage(
-                    enemySprite,
-                    0, 0, enemy.width, enemy.height
-                );
+            if (useSprite) {
+                // Flip all enemies based on their movement direction
+                ctx.save();
+                if (enemy.velocityX < 0) {
+                    // Flip horizontally for left-moving enemies
+                    ctx.translate(screenX + enemy.width, enemy.y);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(
+                        enemySprite,
+                        0, 0, enemy.width, enemy.height
+                    );
+                } else {
+                    ctx.drawImage(
+                        enemySprite,
+                        screenX, enemy.y, enemy.width, enemy.height
+                    );
+                }
+                ctx.restore();
             } else {
-                ctx.drawImage(
-                    enemySprite,
-                    screenX, enemy.y, enemy.width, enemy.height
-                );
+                // Fallback to professional-looking shapes if image fails or isn't loaded
+                drawEnemyFallback(screenX, enemy.y, enemy.width, enemy.height, enemy.type, enemy.velocityX < 0);
             }
-            ctx.restore();
         } catch (e) {
             console.error("Error drawing enemy:", e);
-            // Fallback to a simple colored circle if image fails
-            let fallbackColor = '#FF0033'; // Default strawberry red
-            if (enemy.type === 'cherry') {
-                fallbackColor = '#FF0066';
-            } else if (enemy.type === 'banana') {
-                fallbackColor = '#FFFF00'; // Yellow for banana
-            }
-            
-            ctx.fillStyle = fallbackColor;
-            ctx.beginPath();
-            ctx.arc(screenX + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2, 0, Math.PI * 2);
-            ctx.fill();
+            // Fallback to professional-looking shapes
+            drawEnemyFallback(screenX, enemy.y, enemy.width, enemy.height, enemy.type, enemy.velocityX < 0);
         }
     });
+}
+
+// Professional fallback enemy rendering
+function drawEnemyFallback(x, y, width, height, type, flipped) {
+    ctx.save();
+    
+    if (type === 'banana') {
+        // Draw professional banana enemy
+        ctx.fillStyle = '#FFD700';
+        
+        // Banana body (curved shape)
+        ctx.beginPath();
+        ctx.ellipse(x + width/2, y + height/2, width/2.5, height/2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Banana peel segments
+        ctx.fillStyle = '#FFFF00';
+        ctx.beginPath();
+        ctx.ellipse(x + width/3, y + height/3, width/6, height/4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.ellipse(x + 2*width/3, y + height/3, width/6, height/4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Eyes
+        ctx.fillStyle = '#000000';
+        const eyeSize = Math.max(2, width/10);
+        ctx.beginPath();
+        ctx.arc(x + width/3, y + height/3, eyeSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(x + 2*width/3, y + height/3, eyeSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Mouth
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x + width/2, y + 2*height/3, width/6, 0, Math.PI);
+        ctx.stroke();
+        
+    } else if (type === 'cherry') {
+        // Draw professional cherry enemy
+        ctx.fillStyle = '#DC143C';
+        
+        // Cherry body (two circles)
+        ctx.beginPath();
+        ctx.arc(x + width/3, y + 2*height/3, width/3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(x + 2*width/3, y + 2*height/3, width/3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Cherry stem
+        ctx.strokeStyle = '#228B22';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x + width/2, y + height/4);
+        ctx.lineTo(x + width/2, y + height/2);
+        ctx.stroke();
+        
+        // Eyes
+        ctx.fillStyle = '#FFFFFF';
+        const eyeSize = Math.max(3, width/8);
+        ctx.beginPath();
+        ctx.arc(x + width/4, y + 2*height/3, eyeSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(x + 3*width/4, y + 2*height/3, eyeSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Eye pupils
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(x + width/4, y + 2*height/3, eyeSize/2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(x + 3*width/4, y + 2*height/3, eyeSize/2, 0, Math.PI * 2);
+        ctx.fill();
+        
+    } else {
+        // Draw professional strawberry enemy
+        ctx.fillStyle = '#FF6B6B';
+        
+        // Strawberry body (rounded rectangle)
+        const radius = width/6;
+        ctx.beginPath();
+        ctx.roundRect(x + width/6, y + height/4, 2*width/3, 3*height/4, radius);
+        ctx.fill();
+        
+        // Strawberry top (green leaves)
+        ctx.fillStyle = '#32CD32';
+        ctx.beginPath();
+        ctx.ellipse(x + width/2, y + height/4, width/3, height/6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Strawberry seeds
+        ctx.fillStyle = '#FFFF00';
+        const seedSize = Math.max(1, width/15);
+        for (let i = 0; i < 6; i++) {
+            const seedX = x + width/3 + (i % 2) * width/3;
+            const seedY = y + height/2 + Math.floor(i/2) * height/6;
+            ctx.beginPath();
+            ctx.arc(seedX, seedY, seedSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Eyes
+        ctx.fillStyle = '#000000';
+        const eyeSize = Math.max(2, width/10);
+        ctx.beginPath();
+        ctx.arc(x + width/3, y + height/2, eyeSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(x + 2*width/3, y + height/2, eyeSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Smile
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x + width/2, y + 2*height/3, width/6, 0, Math.PI);
+        ctx.stroke();
+    }
+    
+    ctx.restore();
 }
 
 // Draw boss
