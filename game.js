@@ -946,6 +946,22 @@ function updateBananaFactory() {
             bananaFactory.missiles.splice(index, 1);
         }
     });
+    
+    // Update banana peel projectiles to prevent trails
+    bananaFactory.bananaPeels.forEach((peel, index) => {
+        if (peel.velocityX !== undefined) { // Only update projectile peels, not static ones
+            peel.x += peel.velocityX;
+            peel.y += peel.velocityY;
+            peel.velocityY += 0.2; // Gravity
+            peel.lifetime--;
+            
+            // Remove peels that hit ground, go off screen, or expire
+            if (peel.y > canvas.height - 50 || peel.lifetime <= 0 || 
+                peel.x < cameraX - 100 || peel.x > cameraX + canvas.width + 100) {
+                bananaFactory.bananaPeels.splice(index, 1);
+            }
+        }
+    });
 }
 
 function updateBananaBoss() {
@@ -1157,61 +1173,195 @@ function fireBananaMissile() {
 
 // Level 5: Banana Factory drawing functions
 function drawBananaFactory() {
-    // Draw factory background elements
-    ctx.fillStyle = '#444444';
-    ctx.fillRect(0 - cameraX, 0, 4000, canvas.height);
+    // Draw industrial factory background with depth
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#2C3E50'); // Dark blue-gray at top
+    gradient.addColorStop(0.3, '#34495E'); // Medium blue-gray
+    gradient.addColorStop(0.7, '#5D6D7E'); // Lighter blue-gray
+    gradient.addColorStop(1, '#85929E'); // Light gray at bottom
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0 - cameraX, 0, 6000, canvas.height);
     
-    // Draw factory pipes and machinery (background)
-    ctx.fillStyle = '#666666';
-    for (let i = 0; i < 10; i++) {
-        const pipeX = 500 + i * 400 - cameraX;
-        ctx.fillRect(pipeX, 50, 20, 200);
-        ctx.fillRect(pipeX - 10, 40, 40, 20);
+    // Draw factory floor with industrial pattern
+    ctx.fillStyle = '#2C3E50';
+    ctx.fillRect(0 - cameraX, canvas.height - 60, 6000, 60);
+    
+    // Add floor grid pattern
+    ctx.strokeStyle = '#34495E';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < 6000; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x - cameraX, canvas.height - 60);
+        ctx.lineTo(x - cameraX, canvas.height);
+        ctx.stroke();
     }
     
-    // Draw conveyor belts
+    // Draw industrial pipes and machinery with better detail
+    for (let i = 0; i < 15; i++) {
+        const pipeX = 300 + i * 300 - cameraX;
+        const pipeHeight = 150 + Math.sin(i * 0.5) * 50;
+        
+        // Main pipe
+        ctx.fillStyle = '#7F8C8D';
+        ctx.fillRect(pipeX, 60, 25, pipeHeight);
+        
+        // Pipe joints
+        ctx.fillStyle = '#95A5A6';
+        ctx.fillRect(pipeX - 5, 55, 35, 15);
+        ctx.fillRect(pipeX - 5, 60 + pipeHeight, 35, 15);
+        
+        // Pipe bolts
+        ctx.fillStyle = '#34495E';
+        for (let j = 0; j < 3; j++) {
+            ctx.beginPath();
+            ctx.arc(pipeX - 2 + j * 15, 62, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(pipeX - 2 + j * 15, 60 + pipeHeight + 8, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Steam effects
+        if (i % 3 === 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            for (let s = 0; s < 5; s++) {
+                ctx.beginPath();
+                ctx.arc(pipeX + 12 + Math.sin(performance.now() * 0.01 + s) * 5, 
+                       50 - s * 8, 3 - s * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+    
+    // Draw factory windows with lighting
+    for (let i = 0; i < 8; i++) {
+        const windowX = 400 + i * 500 - cameraX;
+        const windowY = 80 + Math.sin(i * 0.3) * 20;
+        
+        // Window frame
+        ctx.fillStyle = '#2C3E50';
+        ctx.fillRect(windowX, windowY, 80, 60);
+        
+        // Window glass with reflection
+        const windowGradient = ctx.createLinearGradient(windowX, windowY, windowX + 80, windowY + 60);
+        windowGradient.addColorStop(0, '#3498DB');
+        windowGradient.addColorStop(0.5, '#5DADE2');
+        windowGradient.addColorStop(1, '#85C1E9');
+        ctx.fillStyle = windowGradient;
+        ctx.fillRect(windowX + 5, windowY + 5, 70, 50);
+        
+        // Window cross
+        ctx.fillStyle = '#2C3E50';
+        ctx.fillRect(windowX + 37, windowY + 5, 6, 50);
+        ctx.fillRect(windowX + 5, windowY + 27, 70, 6);
+    }
+    
+    // Draw enhanced conveyor belts
     bananaFactory.conveyorBelts.forEach(belt => {
         const screenX = belt.x - cameraX;
         if (screenX > -belt.width && screenX < canvas.width) {
-            // Belt surface
-            ctx.fillStyle = '#8B4513';
+            // Belt base
+            ctx.fillStyle = '#34495E';
+            ctx.fillRect(screenX - 5, belt.y - 5, belt.width + 10, belt.height + 10);
+            
+            // Belt surface with metallic look
+            const beltGradient = ctx.createLinearGradient(screenX, belt.y, screenX, belt.y + belt.height);
+            beltGradient.addColorStop(0, '#5D4E37');
+            beltGradient.addColorStop(0.5, '#8B7355');
+            beltGradient.addColorStop(1, '#A0522D');
+            ctx.fillStyle = beltGradient;
             ctx.fillRect(screenX, belt.y, belt.width, belt.height);
             
-            // Belt direction indicators
+            // Belt movement indicators with animation
             ctx.fillStyle = '#654321';
-            for (let i = 0; i < belt.width; i += 20) {
-                const indicatorX = screenX + i + (performance.now() * belt.direction * 0.1) % 20;
-                ctx.fillRect(indicatorX, belt.y + 5, 10, 10);
+            const animOffset = (performance.now() * belt.direction * 0.05) % 30;
+            for (let i = -30; i < belt.width + 30; i += 30) {
+                const indicatorX = screenX + i + animOffset;
+                if (indicatorX > screenX - 15 && indicatorX < screenX + belt.width + 15) {
+                    // Arrow shape for direction
+                    ctx.beginPath();
+                    if (belt.direction > 0) {
+                        ctx.moveTo(indicatorX, belt.y + 8);
+                        ctx.lineTo(indicatorX + 10, belt.y + 12);
+                        ctx.lineTo(indicatorX, belt.y + 16);
+                    } else {
+                        ctx.moveTo(indicatorX + 10, belt.y + 8);
+                        ctx.lineTo(indicatorX, belt.y + 12);
+                        ctx.lineTo(indicatorX + 10, belt.y + 16);
+                    }
+                    ctx.fill();
+                }
+            }
+            
+            // Belt edges
+            ctx.fillStyle = '#2C3E50';
+            ctx.fillRect(screenX, belt.y, belt.width, 2);
+            ctx.fillRect(screenX, belt.y + belt.height - 2, belt.width, 2);
+        }
+    });
+    
+    // Draw enhanced syrup pools
+    bananaFactory.syrupPools.forEach(pool => {
+        const screenX = pool.x - cameraX;
+        if (screenX > -pool.width && screenX < canvas.width) {
+            // Pool base
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(screenX, pool.y, pool.width, pool.height);
+            
+            // Syrup with animated bubbles
+            const syrupGradient = ctx.createRadialGradient(
+                screenX + pool.width/2, pool.y + pool.height/2, 0,
+                screenX + pool.width/2, pool.y + pool.height/2, pool.width/2
+            );
+            syrupGradient.addColorStop(0, '#FFD700');
+            syrupGradient.addColorStop(0.7, '#DAA520');
+            syrupGradient.addColorStop(1, '#B8860B');
+            ctx.fillStyle = syrupGradient;
+            ctx.fillRect(screenX + 2, pool.y + 2, pool.width - 4, pool.height - 4);
+            
+            // Animated bubbles
+            for (let b = 0; b < 3; b++) {
+                const bubbleX = screenX + 10 + b * (pool.width - 20) / 3 + 
+                               Math.sin(performance.now() * 0.003 + b) * 5;
+                const bubbleY = pool.y + 3 + Math.sin(performance.now() * 0.005 + b * 2) * 2;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(bubbleX, bubbleY, 2 + Math.sin(performance.now() * 0.01 + b) * 1, 0, Math.PI * 2);
+                ctx.fill();
             }
         }
     });
     
-    // Draw syrup pools
-    bananaFactory.syrupPools.forEach(pool => {
-        const screenX = pool.x - cameraX;
-        if (screenX > -pool.width && screenX < canvas.width) {
-            ctx.fillStyle = '#DAA520';
-            ctx.fillRect(screenX, pool.y, pool.width, pool.height);
-            
-            // Sticky effect
-            ctx.fillStyle = '#FFD700';
-            ctx.fillRect(screenX + 5, pool.y + 2, pool.width - 10, pool.height - 4);
-        }
-    });
-    
-    // Draw banana peels
+    // Draw banana peels (static and projectiles)
     bananaFactory.bananaPeels.forEach(peel => {
         if (peel.active) {
             const screenX = peel.x - cameraX;
             if (screenX > -peel.width && screenX < canvas.width) {
-                ctx.fillStyle = '#FFFF00';
-                ctx.fillRect(screenX, peel.y, peel.width, peel.height);
-                
-                // Peel shape
+                // Banana peel with better graphics
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
-                ctx.ellipse(screenX + peel.width/2, peel.y + peel.height/2, peel.width/3, peel.height/2, 0, 0, Math.PI * 2);
+                ctx.ellipse(screenX + peel.width/2, peel.y + peel.height/2, 
+                           peel.width/2, peel.height/2, 0, 0, Math.PI * 2);
                 ctx.fill();
+                
+                // Peel segments
+                ctx.fillStyle = '#FFFF00';
+                for (let i = 0; i < 3; i++) {
+                    const segmentAngle = (i * Math.PI * 2) / 3;
+                    const segmentX = screenX + peel.width/2 + Math.cos(segmentAngle) * peel.width/4;
+                    const segmentY = peel.y + peel.height/2 + Math.sin(segmentAngle) * peel.height/4;
+                    ctx.beginPath();
+                    ctx.ellipse(segmentX, segmentY, peel.width/6, peel.height/6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Peel outline
+                ctx.strokeStyle = '#DAA520';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.ellipse(screenX + peel.width/2, peel.y + peel.height/2, 
+                           peel.width/2, peel.height/2, 0, 0, Math.PI * 2);
+                ctx.stroke();
             }
         }
     });
@@ -2290,12 +2440,6 @@ function initLevel() {
     // Level 5: Banana Factory specific initialization
     if (currentLevel === 5) {
         initBananaFactory();
-        
-        // Debug: Log all platforms for troubleshooting
-        console.log('Level 5 platforms created:');
-        platforms.forEach((platform, index) => {
-            console.log(`Platform ${index}: x=${platform.x}, y=${platform.y}, width=${platform.width}, height=${platform.height}, type=${platform.type}`);
-        });
     }
     
     updateScoreDisplay();
@@ -3150,18 +3294,52 @@ function drawPlatforms() {
                         );
                     }
                 } else {
-                    // Fallback ground rendering
-                    ctx.fillStyle = currentLevel === 5 ? '#8B4513' : '#654321'; // Brown for factory, darker for others
-                    ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-                    
-                    // Add texture lines
-                    ctx.strokeStyle = currentLevel === 5 ? '#A0522D' : '#8B4513';
-                    ctx.lineWidth = 1;
-                    for (let x = 0; x < platform.width; x += 20) {
-                        ctx.beginPath();
-                        ctx.moveTo(screenX + x, platform.y);
-                        ctx.lineTo(screenX + x, platform.y + platform.height);
-                        ctx.stroke();
+                    // Fallback ground rendering with enhanced factory theme
+                    if (currentLevel === 5) {
+                        // Factory floor - industrial concrete look
+                        const groundGradient = ctx.createLinearGradient(screenX, platform.y, screenX, platform.y + platform.height);
+                        groundGradient.addColorStop(0, '#5D6D7E');
+                        groundGradient.addColorStop(0.3, '#4A5568');
+                        groundGradient.addColorStop(0.7, '#2D3748');
+                        groundGradient.addColorStop(1, '#1A202C');
+                        ctx.fillStyle = groundGradient;
+                        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                        
+                        // Concrete texture with grid pattern
+                        ctx.strokeStyle = '#34495E';
+                        ctx.lineWidth = 1;
+                        for (let x = 0; x < platform.width; x += 40) {
+                            ctx.beginPath();
+                            ctx.moveTo(screenX + x, platform.y);
+                            ctx.lineTo(screenX + x, platform.y + platform.height);
+                            ctx.stroke();
+                        }
+                        
+                        // Horizontal lines for concrete blocks
+                        for (let y = 0; y < platform.height; y += 20) {
+                            ctx.beginPath();
+                            ctx.moveTo(screenX, platform.y + y);
+                            ctx.lineTo(screenX + platform.width, platform.y + y);
+                            ctx.stroke();
+                        }
+                        
+                        // Factory floor edge highlight
+                        ctx.fillStyle = '#7F8C8D';
+                        ctx.fillRect(screenX, platform.y, platform.width, 2);
+                    } else {
+                        // Other levels - brown ground
+                        ctx.fillStyle = '#654321';
+                        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+                        
+                        // Add texture lines
+                        ctx.strokeStyle = '#8B4513';
+                        ctx.lineWidth = 1;
+                        for (let x = 0; x < platform.width; x += 20) {
+                            ctx.beginPath();
+                            ctx.moveTo(screenX + x, platform.y);
+                            ctx.lineTo(screenX + x, platform.y + platform.height);
+                            ctx.stroke();
+                        }
                     }
                 }
             } else {
@@ -3176,34 +3354,60 @@ function drawPlatforms() {
                         );
                     }
                 } else {
-                    // Fallback platform rendering with maximum visibility
+                    // Fallback platform rendering with enhanced factory theme
                     if (currentLevel === 5) {
-                        // Factory platforms - maximum contrast and visibility
-                        ctx.fillStyle = '#FFFFFF'; // Pure white for maximum visibility
+                        // Factory platforms - industrial metallic design
+                        const platformGradient = ctx.createLinearGradient(screenX, platform.y, screenX, platform.y + platform.height);
+                        platformGradient.addColorStop(0, '#BDC3C7'); // Light metallic
+                        platformGradient.addColorStop(0.5, '#95A5A6'); // Medium metallic
+                        platformGradient.addColorStop(1, '#7F8C8D'); // Dark metallic
+                        ctx.fillStyle = platformGradient;
                         ctx.fillRect(screenX, platform.y, platform.width, platform.height);
                         
-                        // Black border for contrast
-                        ctx.strokeStyle = '#000000';
-                        ctx.lineWidth = 4;
+                        // Industrial border
+                        ctx.strokeStyle = '#2C3E50';
+                        ctx.lineWidth = 3;
                         ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
                         
-                        // Red warning stripes for high visibility
-                        ctx.fillStyle = '#FF0000';
+                        // Safety stripes
+                        ctx.fillStyle = '#F39C12';
                         ctx.fillRect(screenX, platform.y, platform.width, 3);
+                        ctx.fillStyle = '#E74C3C';
                         ctx.fillRect(screenX, platform.y + platform.height - 3, platform.width, 3);
                         
-                        // Blue rivets for factory look and visibility
-                        ctx.fillStyle = '#0000FF';
-                        for (let x = 10; x < platform.width - 10; x += 25) {
+                        // Industrial rivets with depth
+                        for (let x = 15; x < platform.width - 15; x += 30) {
+                            // Rivet shadow
+                            ctx.fillStyle = '#34495E';
+                            ctx.beginPath();
+                            ctx.arc(screenX + x + 1, platform.y + platform.height/2 + 1, 4, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Rivet highlight
+                            ctx.fillStyle = '#ECF0F1';
                             ctx.beginPath();
                             ctx.arc(screenX + x, platform.y + platform.height/2, 4, 0, Math.PI * 2);
                             ctx.fill();
+                            
+                            // Rivet center
+                            ctx.fillStyle = '#95A5A6';
+                            ctx.beginPath();
+                            ctx.arc(screenX + x, platform.y + platform.height/2, 2, 0, Math.PI * 2);
+                            ctx.fill();
                         }
                         
-                        // Debug: Log platform drawing for troubleshooting
-                        if (platform.y < 200) { // Only log high platforms
-                            console.log(`Drawing high platform at x:${platform.x}, y:${platform.y}, screenX:${screenX}`);
+                        // Platform texture lines
+                        ctx.strokeStyle = '#85929E';
+                        ctx.lineWidth = 1;
+                        for (let i = 1; i < 4; i++) {
+                            const lineY = platform.y + (platform.height * i) / 4;
+                            ctx.beginPath();
+                            ctx.moveTo(screenX + 5, lineY);
+                            ctx.lineTo(screenX + platform.width - 5, lineY);
+                            ctx.stroke();
                         }
+                        
+                        // Remove debug logging
                     } else {
                         // Other levels
                         ctx.fillStyle = '#808080';
