@@ -640,7 +640,8 @@ const resetEnemy = (enemy) => {
     enemy.isAlive = true;
 };
 
-const createExplosion = () => ({
+// Explosion factory for pooling (createExplosion function is in explosion.js)
+const createExplosionObject = () => ({
     x: 0, y: 0, duration: 0, maxDuration: 30,
     particles: [], active: false
 });
@@ -656,7 +657,7 @@ const resetExplosion = (explosion) => {
 
 // Initialize object pools
 const enemyPool = new ObjectPool(createEnemy, resetEnemy, 50);
-const explosionPool = new ObjectPool(createExplosion, resetExplosion, 20);
+const explosionPool = new ObjectPool(createExplosionObject, resetExplosion, 20);
 
 // Memory-efficient game objects with pooling
 let platforms = [];
@@ -744,6 +745,72 @@ class MemoryManager {
             }
         };
     }
+}
+
+// Initialize memory manager
+const memoryManager = new MemoryManager();
+
+// Explosion management functions
+function updateExplosions() {
+    // Update all active explosions
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        const explosion = explosions[i];
+        
+        if (!explosion.active) {
+            explosions.splice(i, 1);
+            continue;
+        }
+        
+        explosion.duration++;
+        
+        // Update particles
+        for (let j = explosion.particles.length - 1; j >= 0; j--) {
+            const particle = explosion.particles[j];
+            
+            // Update particle position
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            
+            // Apply gravity to particles
+            particle.vy += 0.1;
+            
+            // Reduce particle life
+            particle.life--;
+            
+            // Remove dead particles
+            if (particle.life <= 0) {
+                explosion.particles.splice(j, 1);
+            }
+        }
+        
+        // Remove explosion if duration exceeded or no particles left
+        if (explosion.duration >= explosion.maxDuration || explosion.particles.length === 0) {
+            explosion.active = false;
+            explosions.splice(i, 1);
+        }
+    }
+}
+
+function drawExplosions() {
+    // Draw all active explosions
+    explosions.forEach(explosion => {
+        if (!explosion.active) return;
+        
+        explosion.particles.forEach(particle => {
+            const screenX = particle.x - cameraX;
+            
+            // Only draw if on screen
+            if (screenX > -50 && screenX < canvas.width + 50) {
+                ctx.save();
+                ctx.globalAlpha = particle.life / 20; // Fade out over time
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(screenX, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        });
+    });
 }
 
 // Enhanced logging and error handling system
