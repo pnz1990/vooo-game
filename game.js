@@ -3257,38 +3257,24 @@ window.addEventListener('keydown', (e) => {
     if (inputManager.processLevelSelection(e.code)) {
         return;
     }
-                currentLevel = 3;
-                levelSelectionMode = false;
-                initLevel();
-                gameRunning = true;
-                gameLoop();
-            } else if (e.code === 'Digit4' || e.code === 'Numpad4') {
-                currentLevel = 4;
-                levelSelectionMode = false;
-                initLevel();
-                gameRunning = true;
-                gameLoop();
-            }
+    
+    // Handle jump key press
+    if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && gameRunning) {
+        // First jump
+        if (!player.jumping) {
+            player.velocityY = player.jumpPower;
+            player.jumping = true;
+            player.canDoubleJump = doubleJumpEnabled;
+            assets.vooo.isJumping = true;
         }
-        
-        // Handle jump key press
-        if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && gameRunning) {
-            // First jump
-            if (!player.jumping) {
-                player.velocityY = player.jumpPower;
-                player.jumping = true;
-                player.canDoubleJump = doubleJumpEnabled;
-                assets.vooo.isJumping = true;
-            }
-            // Double jump
-            else if (player.canDoubleJump && !player.doubleJumping) {
-                player.velocityY = player.doubleJumpPower;
-                player.doubleJumping = true;
-                player.canDoubleJump = false;
-                
-                // Visual effect for double jump
-                createDoubleJumpEffect();
-            }
+        // Double jump
+        else if (player.canDoubleJump && !player.doubleJumping) {
+            player.velocityY = player.doubleJumpPower;
+            player.doubleJumping = true;
+            player.canDoubleJump = false;
+            
+            // Visual effect for double jump
+            createDoubleJumpEffect();
         }
     }
     
