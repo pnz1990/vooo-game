@@ -1452,32 +1452,16 @@ function drawBananaBoss() {
         
         // Try to use banana boss sprite first
         if (assets.banana.boss && assets.banana.boss.complete) {
-            // Use banana boss sprite
-            ctx.save();
-            if (bananaBoss.invulnerable && Math.sin(performance.now() * 0.02) > 0) {
-                // Flash red when invulnerable
-                ctx.globalAlpha = 0.5;
-                ctx.fillStyle = '#FF0000';
-                ctx.fillRect(screenX, bananaBoss.y, bananaBoss.width, bananaBoss.height);
-                ctx.globalAlpha = 1.0;
-            }
-            
+            // Use banana boss sprite - no red flashing
             ctx.drawImage(
                 assets.banana.boss,
                 screenX, bananaBoss.y, bananaBoss.width, bananaBoss.height
             );
-            ctx.restore();
-            console.log('Using banana boss sprite');
         } else {
-            // Fallback banana boss rendering
-            console.log('Using banana boss fallback rendering');
+            // Fallback banana boss rendering - no red flashing
             
-            // Boss body - bright yellow banana
-            if (bananaBoss.invulnerable && Math.sin(performance.now() * 0.02) > 0) {
-                ctx.fillStyle = '#FF0000'; // Flash red when invulnerable
-            } else {
-                ctx.fillStyle = '#FFD700'; // Gold banana color
-            }
+            // Boss body - bright yellow banana (always gold, no red flashing)
+            ctx.fillStyle = '#FFD700'; // Gold banana color
             
             // Main banana body (curved)
             ctx.beginPath();
@@ -2098,33 +2082,33 @@ function initLevel() {
             { x: 4100, y: canvas.height - 40, width: 1000, height: 40, type: 'ground' }
         );
         
-        // Factory platforms at different heights (NO platforms in boss area after x=4000)
+        // Factory platforms at different heights (NO platforms in boss area after x=3800)
         platforms.push(
-            // Lower platforms (early factory area only)
+            // Lower platforms (early factory area only - well before boss)
             { x: 800, y: 380, width: 200, height: 20, type: 'platform' },
             { x: 1300, y: 350, width: 150, height: 20, type: 'platform' },
             { x: 1700, y: 320, width: 180, height: 20, type: 'platform' },
             { x: 2100, y: 340, width: 160, height: 20, type: 'platform' },
             { x: 2500, y: 300, width: 200, height: 20, type: 'platform' },
             { x: 2900, y: 330, width: 170, height: 20, type: 'platform' },
-            { x: 3300, y: 280, width: 150, height: 20, type: 'platform' },
+            // Removed platform at x=3300 to clear boss area
             
-            // Mid-level platforms (early factory area only)
+            // Mid-level platforms (early factory area only - well before boss)
             { x: 900, y: 250, width: 120, height: 20, type: 'platform' },
             { x: 1400, y: 220, width: 140, height: 20, type: 'platform' },
             { x: 1900, y: 200, width: 130, height: 20, type: 'platform' },
             { x: 2400, y: 180, width: 160, height: 20, type: 'platform' },
             { x: 2800, y: 200, width: 140, height: 20, type: 'platform' },
-            { x: 3200, y: 160, width: 120, height: 20, type: 'platform' },
+            // Removed platform at x=3200 to clear boss area
             
-            // High platforms (early factory area only)
+            // High platforms (early factory area only - well before boss)
             { x: 1000, y: 120, width: 100, height: 20, type: 'platform' },
             { x: 1500, y: 100, width: 110, height: 20, type: 'platform' },
             { x: 2000, y: 80, width: 100, height: 20, type: 'platform' },
-            { x: 2600, y: 90, width: 120, height: 20, type: 'platform' },
-            { x: 3000, y: 70, width: 100, height: 20, type: 'platform' }
+            { x: 2600, y: 90, width: 120, height: 20, type: 'platform' }
+            // Removed platform at x=3000 to clear boss area completely
             
-            // ABSOLUTELY NO PLATFORMS IN BOSS AREA (x > 4000) for clear boss fighting
+            // ABSOLUTELY NO PLATFORMS IN BOSS AREA (x > 3000) for clear boss fighting
         );
     } else {
         // Level 2-4: Ground with lava gaps
