@@ -914,10 +914,16 @@ function updateBananaFactory() {
     });
     
     // Update swinging factory hooks
-    bananaFactory.factoryHooks.forEach(hook => {
+    bananaFactory.factoryHooks.forEach((hook, index) => {
         hook.swingAngle += hook.swingSpeed;
-        if (hook.swingAngle > hook.swingRange || hook.swingAngle < -hook.swingRange) {
-            hook.swingSpeed *= -1;
+        
+        // Reverse direction when reaching swing limits
+        if (hook.swingAngle > hook.swingRange) {
+            hook.swingAngle = hook.swingRange;
+            hook.swingSpeed = -Math.abs(hook.swingSpeed);
+        } else if (hook.swingAngle < -hook.swingRange) {
+            hook.swingAngle = -hook.swingRange;
+            hook.swingSpeed = Math.abs(hook.swingSpeed);
         }
     });
     
@@ -2504,11 +2510,11 @@ function initBananaFactory() {
         { x: 2850, y: 310, width: 30, height: 30, velocityX: -GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED, onConveyor: true }
     ];
     
-    // Create swinging factory hooks
+    // Create swinging factory hooks (only in early factory area, not boss area)
     bananaFactory.factoryHooks = [
-        { x: 1600, y: 100, width: 80, height: 15, swingAngle: 0, swingSpeed: 0.02, swingRange: Math.PI / 3 },
-        { x: 2300, y: 80, width: 80, height: 15, swingAngle: Math.PI / 2, swingSpeed: 0.025, swingRange: Math.PI / 4 },
-        { x: 3000, y: 90, width: 80, height: 15, swingAngle: Math.PI, swingSpeed: 0.02, swingRange: Math.PI / 3 }
+        { x: 1600, y: 100, width: 80, height: 15, swingAngle: 0, swingSpeed: 0.03, swingRange: Math.PI / 4 },
+        { x: 2300, y: 80, width: 80, height: 15, swingAngle: Math.PI / 4, swingSpeed: 0.025, swingRange: Math.PI / 3 },
+        { x: 2800, y: 90, width: 80, height: 15, swingAngle: Math.PI / 2, swingSpeed: 0.035, swingRange: Math.PI / 4 }
     ];
     
     // Initialize Banana Boss - moved much further away from enemies
@@ -3270,8 +3276,11 @@ function drawPlatforms() {
         
         // Skip drawing non-ground platforms in boss area for all levels
         if (currentLevel === 5) {
-            // Level 5: Skip platforms in boss area (x > 3000) except ground
-            if (platform.x > 3000 && platform.type !== 'ground') return;
+            // Level 5: Skip non-ground platforms in boss area (x > 3500) to clear boss fighting space
+            if (platform.x > 3500 && platform.type !== 'ground') {
+                console.log(`Skipping platform at x=${platform.x}, type=${platform.type} (boss area)`);
+                return;
+            }
         } else {
             // Other levels: Skip platforms in boss area (x > 7400) except ground
             if (platform.x > 7400 && platform.type !== 'ground') return;
