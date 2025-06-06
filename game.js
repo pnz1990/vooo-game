@@ -1190,53 +1190,124 @@ function levelSelectionLoop() {
 }
 
 // Game loop
-function gameLoop() {
-    if (!gameRunning) return;
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw background
-    drawBackground();
-    
-    // Update player
-    updatePlayer();
-    
-    // Update enemies
-    updateEnemies();
-    
-    // Update boss
-    updateBoss();
-    
-    // Update explosions
-    updateExplosions();
-    
-    // Draw platforms
-    drawPlatforms();
-    
-    // Draw obstacles
-    drawObstacles();
-    
-    // Draw level end
-    drawLevelEnd();
-    
-    // Draw player
-    drawPlayer();
-    
-    // Draw enemies
-    drawEnemies();
-    
-    // Draw boss
-    drawBoss();
-    
-    // Draw explosions
-    drawExplosions();
-    
-    // Draw boss health bar if near boss
-    if (Math.abs(player.x - boss.x) < 500 && (boss.active || secondBoss.active)) {
-        drawBossHealthBar();
+// Performance monitoring and optimization
+class PerformanceManager {
+    constructor() {
+        this.frameCount = 0;
+        this.lastTime = 0;
+        this.fps = 0;
+        this.deltaTime = 0;
+        this.targetFPS = 60;
+        this.frameTime = 1000 / this.targetFPS;
+        this.animationId = null;
+        this.isRunning = false;
     }
     
+    // Calculate FPS and delta time
+    updatePerformance(currentTime) {
+        this.deltaTime = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+        this.frameCount++;
+        
+        // Calculate FPS every second
+        if (this.frameCount % 60 === 0) {
+            this.fps = Math.round(1000 / this.deltaTime);
+            if (debugMode) {
+                console.log(`FPS: ${this.fps}, Delta: ${this.deltaTime.toFixed(2)}ms`);
+            }
+        }
+    }
+    
+    // Start performance monitoring
+    start() {
+        this.isRunning = true;
+        this.lastTime = performance.now();
+    }
+    
+    // Stop performance monitoring
+    stop() {
+        this.isRunning = false;
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+    }
+}
+
+// Initialize performance manager
+const performanceManager = new PerformanceManager();
+
+// Optimized game loop with error handling and performance monitoring
+function gameLoop(currentTime = performance.now()) {
+    if (!gameRunning) {
+        performanceManager.stop();
+        return;
+    }
+    
+    // Update performance metrics
+    performanceManager.updatePerformance(currentTime);
+    
+    try {
+        // Clear canvas efficiently
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background
+        drawBackground();
+        
+        // Update player
+        updatePlayer();
+        
+        // Update enemies
+        updateEnemies();
+        
+        // Update boss
+        updateBoss();
+        
+        // Update explosions
+        updateExplosions();
+        
+        // Draw platforms
+        drawPlatforms();
+        
+        // Draw obstacles
+        drawObstacles();
+        
+        // Draw level end
+        drawLevelEnd();
+        
+        // Draw player
+        drawPlayer();
+        
+        // Draw enemies
+        drawEnemies();
+        
+        // Draw boss
+        drawBoss();
+        
+        // Draw explosions
+        drawExplosions();
+        
+        // Draw boss health bar if near boss
+        if (Math.abs(player.x - boss.x) < 500 && (boss.active || secondBoss.active)) {
+            drawBossHealthBar();
+        }
+        
+        // Check for level completion
+        checkGameConditions();
+        
+    } catch (error) {
+        console.error('Error in game loop:', error);
+        gameRunning = false;
+        showMessage("Game Error! Please reload.");
+        return;
+    }
+    
+    // Schedule next frame
+    requestAnimationFrame(gameLoop);
+}
+
+// Separate function for game condition checks (better organization)
+function checkGameConditions() {
     // Check for level completion
     // For level 4, both bosses must be defeated
     // For other levels, only the main boss needs to be defeated
@@ -1248,6 +1319,7 @@ function gameLoop() {
         gameRunning = false;
         currentLevel++; // Increment level for next game
         showMessage("Level Complete! Score: " + score);
+        return;
     }
     
     // Check if player is alive
@@ -1262,8 +1334,6 @@ function gameLoop() {
             resetPlayerAfterDeath();
         }
     }
-    
-    requestAnimationFrame(gameLoop);
 }
 
 // Update player position and state
@@ -2611,73 +2681,204 @@ canvas.addEventListener('click', () => {
 });
 
 // This duplicate event listener has been removed// Keyboard controls
-window.addEventListener('keydown', (e) => {
-    // Only register key press if it wasn't already pressed (prevents holding key to spam jump)
-    if (!keys[e.code]) {
-        keys[e.code] = true;
-        
-        // Check for cheat code (999)
-        if (e.code === 'Digit9' || e.code === 'Numpad9') {
-            cheatSequence.push('9');
-            
-            // Keep only the last 3 entries
-            if (cheatSequence.length > 3) {
-                cheatSequence.shift();
-            }
-            
-            // Check if the sequence is "999"
-            if (cheatSequence.length === 3 && 
-                cheatSequence[0] === '9' && 
-                cheatSequence[1] === '9' && 
-                cheatSequence[2] === '9' && 
-                !cheatActivated) {
-                
-                // Activate cheat: 999 lives
-                lives = 999;
-                updateLivesDisplay();
-                cheatActivated = true;
-                
-                // Show cheat activated message
-                const cheatMessage = document.createElement('div');
-                cheatMessage.textContent = '🎮 CHEAT ACTIVATED: 999 LIVES! 🎮';
-                cheatMessage.style.position = 'absolute';
-                cheatMessage.style.top = '100px';
-                cheatMessage.style.left = '50%';
-                cheatMessage.style.transform = 'translateX(-50%)';
-                cheatMessage.style.backgroundColor = 'rgba(255, 215, 0, 0.8)';
-                cheatMessage.style.color = '#FF0000';
-                cheatMessage.style.padding = '10px 20px';
-                cheatMessage.style.borderRadius = '5px';
-                cheatMessage.style.fontWeight = 'bold';
-                cheatMessage.style.fontSize = '20px';
-                cheatMessage.style.zIndex = '1000';
-                document.body.appendChild(cheatMessage);
-                
-                // Remove the message after 3 seconds
-                setTimeout(() => {
-                    document.body.removeChild(cheatMessage);
-                }, 3000);
-            }
-        } else {
-            // Reset cheat sequence if any other key is pressed
-            cheatSequence = [];
+// Input validation and sanitization
+class InputManager {
+    constructor() {
+        this.keys = {};
+        this.validKeys = new Set([
+            'KeyW', 'KeyA', 'KeyS', 'KeyD',
+            'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+            'Space', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit9',
+            'Numpad1', 'Numpad2', 'Numpad3', 'Numpad4', 'Numpad9'
+        ]);
+        this.cheatSequence = [];
+        this.lastInputTime = 0;
+        this.inputCooldown = 16; // ~60fps limit
+    }
+    
+    // Validate key input
+    isValidKey(keyCode) {
+        return this.validKeys.has(keyCode);
+    }
+    
+    // Rate limiting for inputs
+    canProcessInput() {
+        const now = performance.now();
+        if (now - this.lastInputTime < this.inputCooldown) {
+            return false;
+        }
+        this.lastInputTime = now;
+        return true;
+    }
+    
+    // Sanitize and process key down
+    handleKeyDown(event) {
+        // Validate event
+        if (!event || !event.code) {
+            console.warn('Invalid key event');
+            return false;
         }
         
-        // Level selection with number keys
-        if (levelSelectionMode && !gameRunning) {
-            if (e.code === 'Digit1' || e.code === 'Numpad1') {
-                currentLevel = 1;
-                levelSelectionMode = false;
-                initLevel();
-                gameRunning = true;
-                gameLoop();
-            } else if (e.code === 'Digit2' || e.code === 'Numpad2') {
-                currentLevel = 2;
-                levelSelectionMode = false;
-                initLevel();
-                gameRunning = true;
-                gameLoop();
-            } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
+        // Rate limiting
+        if (!this.canProcessInput()) {
+            return false;
+        }
+        
+        // Validate key
+        if (!this.isValidKey(event.code)) {
+            console.warn(`Invalid key: ${event.code}`);
+            return false;
+        }
+        
+        // Prevent key repeat spam
+        if (this.keys[event.code]) {
+            return false;
+        }
+        
+        this.keys[event.code] = true;
+        return true;
+    }
+    
+    // Handle key up
+    handleKeyUp(event) {
+        if (!event || !event.code) {
+            return false;
+        }
+        
+        if (this.isValidKey(event.code)) {
+            this.keys[event.code] = false;
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // Process cheat code with validation
+    processCheatCode(keyCode) {
+        if (keyCode === 'Digit9' || keyCode === 'Numpad9') {
+            this.cheatSequence.push('9');
+            
+            // Limit sequence length for security
+            if (this.cheatSequence.length > 3) {
+                this.cheatSequence.shift();
+            }
+            
+            // Check for valid cheat sequence
+            if (this.cheatSequence.length === 3 && 
+                this.cheatSequence.every(digit => digit === '9') && 
+                !cheatActivated) {
+                
+                this.activateCheat();
+                return true;
+            }
+        } else {
+            // Reset sequence on any other key
+            this.cheatSequence = [];
+        }
+        
+        return false;
+    }
+    
+    // Safely activate cheat
+    activateCheat() {
+        try {
+            lives = GAME_CONFIG.GAME.CHEAT_LIVES;
+            updateLivesDisplay();
+            cheatActivated = true;
+            
+            this.showCheatMessage();
+        } catch (error) {
+            console.error('Error activating cheat:', error);
+        }
+    }
+    
+    // Show cheat activation message safely
+    showCheatMessage() {
+        try {
+            const cheatMessage = document.createElement('div');
+            cheatMessage.textContent = '🎮 CHEAT ACTIVATED: 999 LIVES! 🎮';
+            cheatMessage.style.cssText = `
+                position: absolute;
+                top: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background-color: rgba(255, 215, 0, 0.9);
+                color: #FF0000;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-weight: bold;
+                font-size: 20px;
+                z-index: 1000;
+                pointer-events: none;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            `;
+            
+            document.body.appendChild(cheatMessage);
+            
+            // Remove message after 3 seconds
+            setTimeout(() => {
+                if (document.body.contains(cheatMessage)) {
+                    document.body.removeChild(cheatMessage);
+                }
+            }, 3000);
+            
+        } catch (error) {
+            console.error('Error showing cheat message:', error);
+        }
+    }
+    
+    // Process level selection with validation
+    processLevelSelection(keyCode) {
+        if (!levelSelectionMode || gameRunning) {
+            return false;
+        }
+        
+        const levelMap = {
+            'Digit1': 1, 'Numpad1': 1,
+            'Digit2': 2, 'Numpad2': 2,
+            'Digit3': 3, 'Numpad3': 3,
+            'Digit4': 4, 'Numpad4': 4
+        };
+        
+        const selectedLevel = levelMap[keyCode];
+        if (selectedLevel && selectedLevel >= 1 && selectedLevel <= maxLevel) {
+            currentLevel = selectedLevel;
+            levelSelectionMode = false;
+            initLevel();
+            gameRunning = true;
+            performanceManager.start();
+            gameLoop();
+            return true;
+        }
+        
+        return false;
+    }
+}
+
+// Initialize input manager
+const inputManager = new InputManager();
+
+// Legacy keys object for backward compatibility
+let keys = {};
+let cheatSequence = [];
+
+// Enhanced keyboard event handlers with validation
+window.addEventListener('keydown', (e) => {
+    // Validate and process input
+    if (!inputManager.handleKeyDown(e)) {
+        return;
+    }
+    
+    // Update legacy keys object
+    keys[e.code] = true;
+    
+    // Process cheat code
+    inputManager.processCheatCode(e.code);
+    
+    // Process level selection
+    if (inputManager.processLevelSelection(e.code)) {
+        return;
+    }
                 currentLevel = 3;
                 levelSelectionMode = false;
                 initLevel();
