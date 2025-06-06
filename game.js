@@ -426,18 +426,14 @@ let secondBossDefeated = false;
 let doubleJumpEnabled = true;
 let debugMode = false;
 let cheatActivated = false;
-let keys = {};
-let cameraX = 0;
-// levelSelectionMode already declared above - removed duplicate
-let bossHits = 0;
 // bossDefeated already declared above - removed duplicate
 // secondBossDefeated already declared above - removed duplicate
 // doubleJumpEnabled already declared above - removed duplicate
-let debugMode = false; // Disable debug information
+// debugMode already declared above - removed duplicate
 
 // Cheat code variables
 let cheatSequence = [];
-let cheatActivated = false;
+// cheatActivated already declared above - removed duplicate
 
 // Game assets
 const assets = {
@@ -3242,7 +3238,7 @@ const inputManager = new InputManager();
 
 // Legacy keys object for backward compatibility
 let keys = {};
-let cheatSequence = [];
+// cheatSequence already declared above - removed duplicate
 
 // Enhanced keyboard event handlers with validation
 window.addEventListener('keydown', (e) => {
