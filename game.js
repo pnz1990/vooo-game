@@ -428,11 +428,11 @@ let debugMode = false;
 let cheatActivated = false;
 let keys = {};
 let cameraX = 0;
-let levelSelectionMode = false; // Whether we're in level selection mode
+// levelSelectionMode already declared above - removed duplicate
 let bossHits = 0;
-let bossDefeated = false;
-let secondBossDefeated = false; // Track if second boss is defeated
-let doubleJumpEnabled = true; // Enable double jump feature
+// bossDefeated already declared above - removed duplicate
+// secondBossDefeated already declared above - removed duplicate
+// doubleJumpEnabled already declared above - removed duplicate
 let debugMode = false; // Disable debug information
 
 // Cheat code variables
