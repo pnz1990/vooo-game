@@ -571,11 +571,393 @@ const secondBoss = {
     type: 'strawberry'
 };
 
-// Game objects
+// Memory management and object pooling
+class ObjectPool {
+    constructor(createFn, resetFn, initialSize = 10) {
+        this.createFn = createFn;
+        this.resetFn = resetFn;
+        this.pool = [];
+        this.active = [];
+        
+        // Pre-allocate objects
+        for (let i = 0; i < initialSize; i++) {
+            this.pool.push(this.createFn());
+        }
+    }
+    
+    // Get object from pool or create new one
+    acquire() {
+        let obj;
+        if (this.pool.length > 0) {
+            obj = this.pool.pop();
+        } else {
+            obj = this.createFn();
+        }
+        
+        this.active.push(obj);
+        return obj;
+    }
+    
+    // Return object to pool
+    release(obj) {
+        const index = this.active.indexOf(obj);
+        if (index > -1) {
+            this.active.splice(index, 1);
+            this.resetFn(obj);
+            this.pool.push(obj);
+        }
+    }
+    
+    // Release all active objects
+    releaseAll() {
+        while (this.active.length > 0) {
+            this.release(this.active[0]);
+        }
+    }
+    
+    // Get pool statistics
+    getStats() {
+        return {
+            pooled: this.pool.length,
+            active: this.active.length,
+            total: this.pool.length + this.active.length
+        };
+    }
+}
+
+// Object factories for pooling
+const createEnemy = () => ({
+    x: 0, y: 0, width: 40, height: 40,
+    velocityX: 0, velocityY: 0,
+    onPlatform: false, type: 'strawberry',
+    active: false, isAlive: true
+});
+
+const resetEnemy = (enemy) => {
+    enemy.x = 0;
+    enemy.y = 0;
+    enemy.velocityX = 0;
+    enemy.velocityY = 0;
+    enemy.onPlatform = false;
+    enemy.type = 'strawberry';
+    enemy.active = false;
+    enemy.isAlive = true;
+};
+
+const createExplosion = () => ({
+    x: 0, y: 0, duration: 0, maxDuration: 30,
+    particles: [], active: false
+});
+
+const resetExplosion = (explosion) => {
+    explosion.x = 0;
+    explosion.y = 0;
+    explosion.duration = 0;
+    explosion.maxDuration = 30;
+    explosion.particles = [];
+    explosion.active = false;
+};
+
+// Initialize object pools
+const enemyPool = new ObjectPool(createEnemy, resetEnemy, 50);
+const explosionPool = new ObjectPool(createExplosion, resetExplosion, 20);
+
+// Memory-efficient game objects with pooling
 let platforms = [];
-let enemies = [];
+let enemies = []; // Will be replaced with pool system gradually
 let obstacles = [];
-let explosions = []; // Array to track active explosions
+let explosions = []; // Will be replaced with pool system
+
+// Memory management utilities
+class MemoryManager {
+    constructor() {
+        this.gcInterval = 30000; // 30 seconds
+        this.lastGC = 0;
+        this.memoryStats = {
+            enemies: 0,
+            explosions: 0,
+            platforms: 0
+        };
+    }
+    
+    // Force garbage collection if available (development only)
+    forceGC() {
+        if (window.gc && debugMode) {
+            window.gc();
+            console.log('Forced garbage collection');
+        }
+    }
+    
+    // Clean up unused objects
+    cleanup() {
+        const now = performance.now();
+        if (now - this.lastGC > this.gcInterval) {
+            this.cleanupExplosions();
+            this.cleanupEnemies();
+            this.updateMemoryStats();
+            this.lastGC = now;
+            
+            if (debugMode) {
+                console.log('Memory cleanup performed', this.memoryStats);
+            }
+        }
+    }
+    
+    // Clean up inactive explosions
+    cleanupExplosions() {
+        explosions = explosions.filter(explosion => {
+            if (!explosion.active || explosion.duration >= explosion.maxDuration) {
+                // Return to pool if using pooling
+                if (explosionPool.active.includes(explosion)) {
+                    explosionPool.release(explosion);
+                }
+                return false;
+            }
+            return true;
+        });
+    }
+    
+    // Clean up dead enemies
+    cleanupEnemies() {
+        enemies = enemies.filter(enemy => {
+            if (!enemy.isAlive || !enemy.active) {
+                // Return to pool if using pooling
+                if (enemyPool.active.includes(enemy)) {
+                    enemyPool.release(enemy);
+                }
+                return false;
+            }
+            return true;
+        });
+    }
+    
+    // Update memory statistics
+    updateMemoryStats() {
+        this.memoryStats.enemies = enemies.length;
+        this.memoryStats.explosions = explosions.length;
+        this.memoryStats.platforms = platforms.length;
+    }
+    
+    // Get memory usage report
+    getMemoryReport() {
+        return {
+            ...this.memoryStats,
+            pools: {
+                enemies: enemyPool.getStats(),
+                explosions: explosionPool.getStats()
+            }
+        };
+    }
+}
+
+// Enhanced logging and error handling system
+class Logger {
+    constructor() {
+        this.logLevel = debugMode ? 'DEBUG' : 'ERROR';
+        this.logs = [];
+        this.maxLogs = 100;
+        this.errorCount = 0;
+        this.warningCount = 0;
+    }
+    
+    // Log levels
+    static LEVELS = {
+        DEBUG: 0,
+        INFO: 1,
+        WARN: 2,
+        ERROR: 3
+    };
+    
+    // Add log entry
+    addLog(level, message, data = null) {
+        const timestamp = new Date().toISOString();
+        const logEntry = {
+            timestamp,
+            level,
+            message,
+            data,
+            stack: level === 'ERROR' ? new Error().stack : null
+        };
+        
+        this.logs.push(logEntry);
+        
+        // Maintain log size
+        if (this.logs.length > this.maxLogs) {
+            this.logs.shift();
+        }
+        
+        // Update counters
+        if (level === 'ERROR') this.errorCount++;
+        if (level === 'WARN') this.warningCount++;
+        
+        // Console output
+        this.outputToConsole(logEntry);
+    }
+    
+    // Output to console with appropriate method
+    outputToConsole(logEntry) {
+        const { level, message, data } = logEntry;
+        const output = data ? [message, data] : [message];
+        
+        switch (level) {
+            case 'DEBUG':
+                if (debugMode) console.debug(...output);
+                break;
+            case 'INFO':
+                console.info(...output);
+                break;
+            case 'WARN':
+                console.warn(...output);
+                break;
+            case 'ERROR':
+                console.error(...output);
+                break;
+        }
+    }
+    
+    // Convenience methods
+    debug(message, data) { this.addLog('DEBUG', message, data); }
+    info(message, data) { this.addLog('INFO', message, data); }
+    warn(message, data) { this.addLog('WARN', message, data); }
+    error(message, data) { this.addLog('ERROR', message, data); }
+    
+    // Get error summary
+    getErrorSummary() {
+        return {
+            totalLogs: this.logs.length,
+            errors: this.errorCount,
+            warnings: this.warningCount,
+            recentErrors: this.logs.filter(log => log.level === 'ERROR').slice(-5)
+        };
+    }
+    
+    // Export logs for debugging
+    exportLogs() {
+        return JSON.stringify(this.logs, null, 2);
+    }
+}
+
+// Global error handler
+class ErrorHandler {
+    constructor(logger) {
+        this.logger = logger;
+        this.setupGlobalHandlers();
+        this.criticalErrors = 0;
+        this.maxCriticalErrors = 5;
+    }
+    
+    // Setup global error handlers
+    setupGlobalHandlers() {
+        // Catch unhandled errors
+        window.addEventListener('error', (event) => {
+            this.handleError(event.error, 'Unhandled Error', {
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno
+            });
+        });
+        
+        // Catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            this.handleError(event.reason, 'Unhandled Promise Rejection');
+            event.preventDefault(); // Prevent console spam
+        });
+    }
+    
+    // Handle errors with context
+    handleError(error, context = 'Unknown', additionalData = {}) {
+        this.criticalErrors++;
+        
+        const errorInfo = {
+            message: error?.message || 'Unknown error',
+            stack: error?.stack || 'No stack trace',
+            context,
+            timestamp: Date.now(),
+            gameState: {
+                running: gameRunning,
+                level: currentLevel,
+                score: score,
+                lives: lives
+            },
+            ...additionalData
+        };
+        
+        this.logger.error(`${context}: ${errorInfo.message}`, errorInfo);
+        
+        // Handle critical errors
+        if (this.criticalErrors >= this.maxCriticalErrors) {
+            this.handleCriticalFailure();
+        }
+        
+        return errorInfo;
+    }
+    
+    // Handle critical system failure
+    handleCriticalFailure() {
+        this.logger.error('Critical failure: Too many errors, stopping game');
+        
+        try {
+            gameRunning = false;
+            performanceManager.stop();
+            
+            // Show user-friendly error message
+            if (ctx) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#FF0000';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Game Error', canvas.width / 2, canvas.height / 2 - 50);
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = '16px Arial';
+                ctx.fillText('Please reload the page', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Sorry for the inconvenience!', canvas.width / 2, canvas.height / 2 + 30);
+            }
+        } catch (e) {
+            // Last resort - direct DOM manipulation
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #222; color: white; font-family: Arial;">
+                    <div style="text-align: center;">
+                        <h1 style="color: #ff0000;">Game Error</h1>
+                        <p>Please reload the page</p>
+                        <button onclick="location.reload()" style="padding: 10px 20px; font-size: 16px;">Reload Game</button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    // Safe function wrapper
+    safeExecute(fn, context = 'Unknown function', fallback = null) {
+        try {
+            return fn();
+        } catch (error) {
+            this.handleError(error, context);
+            return fallback;
+        }
+    }
+    
+    // Async safe wrapper
+    async safeExecuteAsync(fn, context = 'Unknown async function', fallback = null) {
+        try {
+            return await fn();
+        } catch (error) {
+            this.handleError(error, context);
+            return fallback;
+        }
+    }
+}
+
+// Initialize logging and error handling
+const logger = new Logger();
+const errorHandler = new ErrorHandler(logger);
+
+// Safe wrapper for critical functions
+const safe = (fn, context, fallback = null) => {
+    return errorHandler.safeExecute(fn, context, fallback);
+};
 let levelEnd = { x: 8000, width: 50, height: 500 };
 
 // Load game assets
