@@ -31,17 +31,22 @@ function initResponsiveCanvas() {
     let newWidth = containerRect.width;
     let newHeight = containerRect.height;
     
+    // Ensure we maintain aspect ratio
     if (newWidth / newHeight > aspectRatio) {
         newWidth = newHeight * aspectRatio;
     } else {
         newHeight = newWidth / aspectRatio;
     }
     
-    // Set canvas size
+    // Set canvas internal resolution
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
-    canvas.style.width = newWidth + 'px';
-    canvas.style.height = newHeight + 'px';
+    
+    // Set canvas display size to fill container properly
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+    canvas.style.margin = '0 auto';
     
     // Calculate scale factor for game coordinates
     scaleFactor = Math.min(newWidth / canvasWidth, newHeight / canvasHeight);
@@ -49,6 +54,15 @@ function initResponsiveCanvas() {
     // Add mobile controls if needed
     if (isMobile || isTouch) {
         addMobileControls();
+    }
+    
+    // Ensure container uses full available space
+    const isLandscape = window.innerWidth > window.innerHeight;
+    if (isMobile && isLandscape) {
+        // Optimize for landscape mobile gaming
+        container.style.width = '98vw';
+        container.style.height = '75vh';
+        container.style.maxHeight = '90vh';
     }
 }
 
@@ -63,56 +77,67 @@ function addMobileControls() {
         controlsContainer.appendChild(reloadButton);
     }
     
-    // Create mobile control buttons
+    // Create mobile control buttons container
     const mobileControlsDiv = document.createElement('div');
     mobileControlsDiv.id = 'mobileControls';
     mobileControlsDiv.style.cssText = `
         display: flex;
-        gap: 10px;
+        gap: 15px;
         margin: 10px 0;
-        flex-wrap: wrap;
         justify-content: center;
+        align-items: center;
+        width: 100%;
+        max-width: 400px;
     `;
     
     // Left button
     const leftBtn = document.createElement('button');
-    leftBtn.textContent = '← Left';
+    leftBtn.textContent = '← LEFT';
     leftBtn.style.cssText = `
         background-color: #e74c3c;
         padding: 15px 20px;
         font-size: 16px;
+        font-weight: bold;
         border-radius: 8px;
-        min-width: 80px;
+        min-width: 90px;
+        flex: 1;
+        max-width: 120px;
     `;
     
-    // Right button
-    const rightBtn = document.createElement('button');
-    rightBtn.textContent = 'Right →';
-    rightBtn.style.cssText = `
-        background-color: #e74c3c;
-        padding: 15px 20px;
-        font-size: 16px;
-        border-radius: 8px;
-        min-width: 80px;
-    `;
-    
-    // Jump button
+    // Jump button (center, larger)
     const jumpBtn = document.createElement('button');
-    jumpBtn.textContent = '↑ Jump';
+    jumpBtn.textContent = '↑ JUMP';
     jumpBtn.style.cssText = `
         background-color: #27ae60;
-        padding: 15px 25px;
+        padding: 18px 25px;
         font-size: 18px;
         font-weight: bold;
         border-radius: 8px;
         min-width: 100px;
+        flex: 1.2;
+        max-width: 140px;
+    `;
+    
+    // Right button
+    const rightBtn = document.createElement('button');
+    rightBtn.textContent = 'RIGHT →';
+    rightBtn.style.cssText = `
+        background-color: #e74c3c;
+        padding: 15px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 8px;
+        min-width: 90px;
+        flex: 1;
+        max-width: 120px;
     `;
     
     // Add touch event listeners
     addTouchEvents(leftBtn, 'left');
-    addTouchEvents(rightBtn, 'right');
     addTouchEvents(jumpBtn, 'jump');
+    addTouchEvents(rightBtn, 'right');
     
+    // Arrange buttons: LEFT - JUMP - RIGHT
     mobileControlsDiv.appendChild(leftBtn);
     mobileControlsDiv.appendChild(jumpBtn);
     mobileControlsDiv.appendChild(rightBtn);
@@ -126,7 +151,7 @@ function addMobileControls() {
     const instructions = document.getElementById('instructions');
     if (instructions) {
         instructions.innerHTML = `
-            <p><strong>Mobile Controls:</strong> Use the buttons below to move and jump. Double jump available in mid-air!</p>
+            <p><strong>Mobile Controls:</strong> Use LEFT/RIGHT to move, JUMP for single/double jump!</p>
             <p>Defeat enemies by jumping on them. Find and defeat the boss to win!</p>
             <p>Level 1: Strawberry enemies | Level 2: Lava Challenge | Level 3: Cherry enemies | Level 4: Double Boss</p>
         `;

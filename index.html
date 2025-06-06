@@ -34,7 +34,7 @@
         
         #gameContainer {
             position: relative;
-            width: min(800px, 95vw);
+            width: min(800px, 99vw);
             height: min(500px, 60vh);
             max-width: 800px;
             max-height: 500px;
@@ -42,7 +42,8 @@
             border-radius: 5px;
             overflow: hidden;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            margin: 10px;
+            margin: 5px auto;
+            display: block;
         }
         
         #gameCanvas {
@@ -80,6 +81,8 @@
             gap: 10px;
             flex-wrap: wrap;
             justify-content: center;
+            width: 100%;
+            max-width: 800px;
         }
         
         button {
@@ -114,7 +117,7 @@
             }
             
             #gameContainer {
-                width: 95vw;
+                width: 98vw;
                 height: 50vh;
                 min-height: 300px;
                 max-height: 400px;
@@ -133,7 +136,7 @@
         
         @media (max-width: 480px) {
             #gameContainer {
-                width: 98vw;
+                width: 99vw;
                 height: 45vh;
                 min-height: 280px;
                 max-height: 350px;
@@ -154,23 +157,54 @@
             }
         }
         
-        /* Landscape mobile orientation */
+        /* Landscape mobile orientation - OPTIMIZED FOR PHONE GAMING */
         @media (max-height: 500px) and (orientation: landscape) {
             body {
                 min-height: auto;
-            }
-            
-            #gameContainer {
-                height: 85vh;
-                max-height: 400px;
+                padding: 2px;
+                justify-content: flex-start;
             }
             
             h1 {
-                margin: 5px 0;
+                margin: 2px 0;
+                font-size: 1.2rem;
+            }
+            
+            #gameContainer {
+                width: 99vw;
+                height: 85vh;
+                max-height: none;
+                min-height: 200px;
+                margin: 2px auto;
+                border-width: 2px;
             }
             
             #instructions {
-                margin-top: 5px;
+                margin-top: 3px;
+                font-size: 0.7rem;
+                line-height: 1.2;
+            }
+            
+            #controls {
+                margin-top: 3px;
+            }
+        }
+        
+        /* Extra small landscape phones */
+        @media (max-height: 400px) and (orientation: landscape) {
+            h1 {
+                font-size: 1rem;
+                margin: 1px 0;
+            }
+            
+            #gameContainer {
+                height: 80vh;
+                max-height: 95vh;
+            }
+            
+            #instructions {
+                font-size: 0.6rem;
+                margin-top: 3px;
             }
         }
     </style>
@@ -197,7 +231,7 @@
     </div>
     
     <!-- Add a version parameter to prevent caching -->
-    <script src="game.js?v=3.0.0"></script>
+    <script src="game.js?v=4.0.0"></script>
     <script src="js/explosion.js?v=1.0.0"></script>
     
     <script>
