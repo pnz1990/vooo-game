@@ -1,68 +1,112 @@
-// Game canvas setup with mobile responsiveness
+// Game canvas setup with mobile responsiveness and error handling
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas?.getContext('2d');
 const scoreElement = document.getElementById('score');
 const livesElement = document.getElementById('lives');
+
+// Validate critical elements exist
+if (!canvas) {
+    throw new Error('Game canvas element not found. Please ensure HTML contains element with id="gameCanvas"');
+}
+if (!ctx) {
+    throw new Error('Canvas 2D context not supported. Please use a modern browser.');
+}
+if (!scoreElement || !livesElement) {
+    console.warn('UI elements missing. Game will continue but UI updates may not work.');
+}
 
 // Mobile detection and responsive canvas setup
 let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 let isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-// Canvas dimensions - responsive
-let canvasWidth = 800;
-let canvasHeight = 500;
+// Canvas dimensions - responsive (constants for better maintainability)
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 500;
+const ASPECT_RATIO = CANVAS_WIDTH / CANVAS_HEIGHT;
+
+let canvasWidth = CANVAS_WIDTH;
+let canvasHeight = CANVAS_HEIGHT;
 let scaleFactor = 1;
 
-// Mobile control variables
+// Mobile control variables with better structure
 let mobileControls = {
     left: false,
     right: false,
     jump: false,
-    showControls: false
+    showControls: false,
+    
+    // Reset all controls
+    reset() {
+        this.left = false;
+        this.right = false;
+        this.jump = false;
+    },
+    
+    // Check if any control is active
+    isActive() {
+        return this.left || this.right || this.jump;
+    }
 };
 
-// Initialize responsive canvas
+// Initialize responsive canvas with error handling
 function initResponsiveCanvas() {
-    const container = document.getElementById('gameContainer');
-    const containerRect = container.getBoundingClientRect();
-    
-    // Calculate scale factor to maintain aspect ratio
-    const aspectRatio = 800 / 500;
-    let newWidth = containerRect.width;
-    let newHeight = containerRect.height;
-    
-    // Ensure we maintain aspect ratio
-    if (newWidth / newHeight > aspectRatio) {
-        newWidth = newHeight * aspectRatio;
-    } else {
-        newHeight = newWidth / aspectRatio;
-    }
-    
-    // Set canvas internal resolution
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
-    
-    // Set canvas display size to fill container properly
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.display = 'block';
-    canvas.style.margin = '0 auto';
-    
-    // Calculate scale factor for game coordinates
-    scaleFactor = Math.min(newWidth / canvasWidth, newHeight / canvasHeight);
-    
-    // Add mobile controls if needed
-    if (isMobile || isTouch) {
-        addMobileControls();
-    }
-    
-    // Ensure container uses full available space
-    const isLandscape = window.innerWidth > window.innerHeight;
-    if (isMobile && isLandscape) {
-        // Optimize for landscape mobile gaming
-        container.style.width = '98vw';
-        container.style.height = '75vh';
-        container.style.maxHeight = '90vh';
+    try {
+        const container = document.getElementById('gameContainer');
+        if (!container) {
+            console.error('Game container not found');
+            return false;
+        }
+        
+        const containerRect = container.getBoundingClientRect();
+        
+        // Validate container dimensions
+        if (containerRect.width <= 0 || containerRect.height <= 0) {
+            console.warn('Container has invalid dimensions, using defaults');
+            return false;
+        }
+        
+        // Calculate scale factor to maintain aspect ratio
+        let newWidth = containerRect.width;
+        let newHeight = containerRect.height;
+        
+        // Ensure we maintain aspect ratio
+        if (newWidth / newHeight > ASPECT_RATIO) {
+            newWidth = newHeight * ASPECT_RATIO;
+        } else {
+            newHeight = newWidth / ASPECT_RATIO;
+        }
+        
+        // Set canvas internal resolution
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        
+        // Set canvas display size to fill container properly
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.display = 'block';
+        canvas.style.margin = '0 auto';
+        
+        // Calculate scale factor for game coordinates
+        scaleFactor = Math.min(newWidth / canvasWidth, newHeight / canvasHeight);
+        
+        // Add mobile controls if needed
+        if (isMobile || isTouch) {
+            addMobileControls();
+        }
+        
+        // Ensure container uses full available space
+        const isLandscape = window.innerWidth > window.innerHeight;
+        if (isMobile && isLandscape) {
+            // Optimize for landscape mobile gaming
+            container.style.width = '98vw';
+            container.style.height = '75vh';
+            container.style.maxHeight = '90vh';
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error initializing responsive canvas:', error);
+        return false;
     }
 }
 
@@ -246,14 +290,142 @@ window.addEventListener('orientationchange', () => {
     setTimeout(handleResize, 100); // Delay to ensure orientation change is complete
 });
 
-// Game state
+// Game constants for better maintainability
+const GAME_CONFIG = {
+    CANVAS: {
+        WIDTH: 800,
+        HEIGHT: 500,
+        ASPECT_RATIO: 800 / 500
+    },
+    PLAYER: {
+        WIDTH: 50,
+        HEIGHT: 70,
+        BASE_SPEED: 3.45,
+        BASE_JUMP_POWER: -11.5,
+        DOUBLE_JUMP_POWER: -13
+    },
+    PHYSICS: {
+        BASE_GRAVITY: 0.46,
+        GROUND_LEVEL: 430
+    },
+    GAME: {
+        MAX_LEVEL: 4,
+        DEFAULT_LIVES: 3,
+        CHEAT_LIVES: 999,
+        LEVEL_1_SPEED_MULTIPLIER: 0.85
+    },
+    ENEMIES: {
+        LEVEL_1_COUNT: 15,
+        DEFAULT_COUNT: 30,
+        LEVEL_1_PLATFORM_CHANCE: 0.2,
+        DEFAULT_PLATFORM_CHANCE: 0.4
+    },
+    BOSS: {
+        WIDTH: 100,
+        HEIGHT: 120,
+        HITS_REQUIRED: 5
+    }
+};
+
+// Game state management with validation
+class GameState {
+    constructor() {
+        this.gameRunning = false;
+        this.score = 0;
+        this.lives = GAME_CONFIG.GAME.DEFAULT_LIVES;
+        this.currentLevel = 1;
+        this.maxLevel = GAME_CONFIG.GAME.MAX_LEVEL;
+        this.speedMultiplier = GAME_CONFIG.GAME.LEVEL_1_SPEED_MULTIPLIER;
+        this.gravity = GAME_CONFIG.PHYSICS.BASE_GRAVITY;
+        this.levelSelectionMode = false;
+        this.bossDefeated = false;
+        this.secondBossDefeated = false;
+        this.doubleJumpEnabled = true;
+        this.debugMode = false;
+        this.cheatActivated = false;
+    }
+    
+    // Reset game state
+    reset() {
+        this.gameRunning = false;
+        this.score = 0;
+        this.lives = this.cheatActivated ? GAME_CONFIG.GAME.CHEAT_LIVES : GAME_CONFIG.GAME.DEFAULT_LIVES;
+        this.bossDefeated = false;
+        this.secondBossDefeated = false;
+        this.updateSpeedMultiplier();
+    }
+    
+    // Update speed multiplier based on current level
+    updateSpeedMultiplier() {
+        if (this.currentLevel === 1) {
+            this.speedMultiplier = GAME_CONFIG.GAME.LEVEL_1_SPEED_MULTIPLIER;
+        } else {
+            this.speedMultiplier = 1 + ((this.currentLevel - 2) * 0.1);
+        }
+        this.gravity = GAME_CONFIG.PHYSICS.BASE_GRAVITY * this.speedMultiplier;
+    }
+    
+    // Validate level
+    setLevel(level) {
+        if (level >= 1 && level <= this.maxLevel) {
+            this.currentLevel = level;
+            this.updateSpeedMultiplier();
+            return true;
+        }
+        console.warn(`Invalid level: ${level}. Must be between 1 and ${this.maxLevel}`);
+        return false;
+    }
+    
+    // Add score with validation
+    addScore(points) {
+        if (typeof points === 'number' && points >= 0) {
+            this.score += points;
+            this.updateUI();
+        }
+    }
+    
+    // Lose life with validation
+    loseLife() {
+        if (this.lives > 0) {
+            this.lives--;
+            this.updateUI();
+            return this.lives > 0;
+        }
+        return false;
+    }
+    
+    // Update UI elements safely
+    updateUI() {
+        try {
+            if (scoreElement) {
+                scoreElement.textContent = `Score: ${this.score} | Level: ${this.currentLevel}`;
+            }
+            if (livesElement) {
+                livesElement.textContent = `Lives: ${this.lives}`;
+            }
+        } catch (error) {
+            console.warn('Error updating UI:', error);
+        }
+    }
+}
+
+// Initialize game state
+const gameState = new GameState();
+
+// Legacy variables for backward compatibility (will be gradually replaced)
 let gameRunning = false;
 let score = 0;
-let lives = 3;
+let lives = GAME_CONFIG.GAME.DEFAULT_LIVES;
 let currentLevel = 1;
-let maxLevel = 4; // Maximum available level (updated to 4)
-let speedMultiplier = 0.85; // Level 1: 15% slower (0.85)
-let gravity = 0.46; // Base gravity value
+let maxLevel = GAME_CONFIG.GAME.MAX_LEVEL;
+let speedMultiplier = GAME_CONFIG.GAME.LEVEL_1_SPEED_MULTIPLIER;
+let gravity = GAME_CONFIG.PHYSICS.BASE_GRAVITY;
+let levelSelectionMode = false;
+let bossDefeated = false;
+let secondBossDefeated = false;
+let doubleJumpEnabled = true;
+let debugMode = false;
+let cheatActivated = false;
 let keys = {};
 let cameraX = 0;
 let levelSelectionMode = false; // Whether we're in level selection mode
