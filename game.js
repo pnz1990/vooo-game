@@ -1952,34 +1952,38 @@ function initLevel() {
             { x: 1600, y: canvas.height - 40, width: 500, height: 40, type: 'ground' },
             { x: 2200, y: canvas.height - 40, width: 400, height: 40, type: 'ground' },
             { x: 2700, y: canvas.height - 40, width: 600, height: 40, type: 'ground' },
-            // Boss area floor - extended and clear
-            { x: 3400, y: canvas.height - 40, width: 800, height: 40, type: 'ground' }
+            { x: 3400, y: canvas.height - 40, width: 600, height: 40, type: 'ground' },
+            // Boss area floor - extended and clear, no gaps
+            { x: 4100, y: canvas.height - 40, width: 1000, height: 40, type: 'ground' }
         );
         
-        // Factory platforms at different heights (NO platforms in boss area after x=3200)
+        // Factory platforms at different heights (NO platforms in boss area after x=4000)
         platforms.push(
-            // Lower platforms (early factory area)
+            // Lower platforms (early factory area only)
             { x: 800, y: 380, width: 200, height: 20, type: 'platform' },
             { x: 1300, y: 350, width: 150, height: 20, type: 'platform' },
             { x: 1700, y: 320, width: 180, height: 20, type: 'platform' },
             { x: 2100, y: 340, width: 160, height: 20, type: 'platform' },
             { x: 2500, y: 300, width: 200, height: 20, type: 'platform' },
             { x: 2900, y: 330, width: 170, height: 20, type: 'platform' },
+            { x: 3300, y: 280, width: 150, height: 20, type: 'platform' },
             
-            // Mid-level platforms (early factory area)
+            // Mid-level platforms (early factory area only)
             { x: 900, y: 250, width: 120, height: 20, type: 'platform' },
             { x: 1400, y: 220, width: 140, height: 20, type: 'platform' },
             { x: 1900, y: 200, width: 130, height: 20, type: 'platform' },
             { x: 2400, y: 180, width: 160, height: 20, type: 'platform' },
             { x: 2800, y: 200, width: 140, height: 20, type: 'platform' },
+            { x: 3200, y: 160, width: 120, height: 20, type: 'platform' },
             
             // High platforms (early factory area only)
             { x: 1000, y: 120, width: 100, height: 20, type: 'platform' },
             { x: 1500, y: 100, width: 110, height: 20, type: 'platform' },
             { x: 2000, y: 80, width: 100, height: 20, type: 'platform' },
-            { x: 2600, y: 90, width: 120, height: 20, type: 'platform' }
+            { x: 2600, y: 90, width: 120, height: 20, type: 'platform' },
+            { x: 3000, y: 70, width: 100, height: 20, type: 'platform' }
             
-            // NO PLATFORMS IN BOSS AREA (x > 3200) for easy boss jumping
+            // ABSOLUTELY NO PLATFORMS IN BOSS AREA (x > 4000) for clear boss fighting
         );
     } else {
         // Level 2-4: Ground with lava gaps
@@ -2277,7 +2281,7 @@ function initLevel() {
     // Set level end based on level
     if (currentLevel === 5) {
         // Level 5: End inside factory after boss defeat
-        levelEnd = { x: 4000, width: 50, height: 500 }; // Much closer, inside factory
+        levelEnd = { x: 5000, width: 50, height: 500 }; // Moved to match new boss position
     } else {
         // Other levels: Standard far end
         levelEnd = { x: 8200, width: 50, height: 500 };
@@ -2286,6 +2290,12 @@ function initLevel() {
     // Level 5: Banana Factory specific initialization
     if (currentLevel === 5) {
         initBananaFactory();
+        
+        // Debug: Log all platforms for troubleshooting
+        console.log('Level 5 platforms created:');
+        platforms.forEach((platform, index) => {
+            console.log(`Platform ${index}: x=${platform.x}, y=${platform.y}, width=${platform.width}, height=${platform.height}, type=${platform.type}`);
+        });
     }
     
     updateScoreDisplay();
@@ -2372,8 +2382,8 @@ function initBananaFactory() {
         { x: 3000, y: 90, width: 80, height: 15, swingAngle: Math.PI, swingSpeed: 0.02, swingRange: Math.PI / 3 }
     ];
     
-    // Initialize Banana Boss - moved earlier for better boss fight
-    bananaBoss.x = 3500; // Moved from 3800 to 3500
+    // Initialize Banana Boss - moved much further away from enemies
+    bananaBoss.x = 4500; // Moved from 3500 to 4500 for more separation
     bananaBoss.y = 300;
     bananaBoss.health = GAME_CONFIG.BOSS.BANANA_BOSS_HITS;
     bananaBoss.maxHealth = GAME_CONFIG.BOSS.BANANA_BOSS_HITS;
@@ -2384,13 +2394,13 @@ function initBananaFactory() {
     
     // Create banana enemies for Level 5
     enemies = []; // Clear existing enemies
-    const bananaEnemyCount = 25;
+    const bananaEnemyCount = 20; // Reduced count for better spacing
     
     for (let i = 0; i < bananaEnemyCount; i++) {
-        const enemyX = 700 + i * 120 + Math.random() * 80;
+        const enemyX = 700 + i * 140 + Math.random() * 60; // Better spacing
         
-        // Skip if too close to boss area
-        if (enemyX >= 3600) continue;
+        // Skip if too close to boss area - increased buffer zone
+        if (enemyX >= 4000) continue; // Increased from 3600 to 4000
         
         // Position on ground or platforms
         let enemyY = canvas.height - 40 - 30; // Default ground position
@@ -3129,8 +3139,8 @@ function drawPlatforms() {
         
         try {
             if (platform.type === 'ground') {
-                // Draw ground with tiles or fallback
-                if (assets.tiles.img) {
+                // Draw ground - always use fallback for Level 5 to ensure visibility
+                if (assets.tiles.img && currentLevel !== 5) {
                     for (let x = 0; x < platform.width; x += assets.tiles.size) {
                         ctx.drawImage(
                             assets.tiles.img,
@@ -3155,8 +3165,8 @@ function drawPlatforms() {
                     }
                 }
             } else {
-                // Draw platform with tiles or fallback
-                if (assets.tiles.img) {
+                // Draw platform - always use fallback for Level 5 to ensure visibility
+                if (assets.tiles.img && currentLevel !== 5) {
                     for (let x = 0; x < platform.width; x += assets.tiles.size) {
                         ctx.drawImage(
                             assets.tiles.img,
@@ -3166,29 +3176,34 @@ function drawPlatforms() {
                         );
                     }
                 } else {
-                    // Fallback platform rendering with high contrast colors
+                    // Fallback platform rendering with maximum visibility
                     if (currentLevel === 5) {
-                        // Factory platforms - bright silver with dark borders for visibility
-                        ctx.fillStyle = '#E0E0E0'; // Bright silver
+                        // Factory platforms - maximum contrast and visibility
+                        ctx.fillStyle = '#FFFFFF'; // Pure white for maximum visibility
                         ctx.fillRect(screenX, platform.y, platform.width, platform.height);
                         
-                        // Dark border for contrast
-                        ctx.strokeStyle = '#404040'; // Dark gray
-                        ctx.lineWidth = 3;
+                        // Black border for contrast
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 4;
                         ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
                         
-                        // Add bright rivets for factory look
-                        ctx.fillStyle = '#606060';
+                        // Red warning stripes for high visibility
+                        ctx.fillStyle = '#FF0000';
+                        ctx.fillRect(screenX, platform.y, platform.width, 3);
+                        ctx.fillRect(screenX, platform.y + platform.height - 3, platform.width, 3);
+                        
+                        // Blue rivets for factory look and visibility
+                        ctx.fillStyle = '#0000FF';
                         for (let x = 10; x < platform.width - 10; x += 25) {
                             ctx.beginPath();
-                            ctx.arc(screenX + x, platform.y + platform.height/2, 3, 0, Math.PI * 2);
+                            ctx.arc(screenX + x, platform.y + platform.height/2, 4, 0, Math.PI * 2);
                             ctx.fill();
                         }
                         
-                        // Add warning stripes on edges for high visibility
-                        ctx.fillStyle = '#FFD700'; // Gold warning color
-                        ctx.fillRect(screenX, platform.y, platform.width, 2);
-                        ctx.fillRect(screenX, platform.y + platform.height - 2, platform.width, 2);
+                        // Debug: Log platform drawing for troubleshooting
+                        if (platform.y < 200) { // Only log high platforms
+                            console.log(`Drawing high platform at x:${platform.x}, y:${platform.y}, screenX:${screenX}`);
+                        }
                     } else {
                         // Other levels
                         ctx.fillStyle = '#808080';
