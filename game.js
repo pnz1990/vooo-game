@@ -3141,7 +3141,7 @@ class InputManager {
         this.inputCooldown = 16; // ~60fps limit
     }
     
-    // Validate key input
+    // Validate key input (now more permissive)
     isValidKey(keyCode) {
         return this.validKeys.has(keyCode);
     }
@@ -3156,7 +3156,7 @@ class InputManager {
         return true;
     }
     
-    // Sanitize and process key down
+    // Sanitize and process key down (improved to be less strict)
     handleKeyDown(event) {
         // Validate event
         if (!event || !event.code) {
@@ -3164,14 +3164,13 @@ class InputManager {
             return false;
         }
         
-        // Rate limiting
-        if (!this.canProcessInput()) {
-            return false;
+        // If it's not a valid game key, just ignore it silently (don't block other processing)
+        if (!this.isValidKey(event.code)) {
+            return false; // Let other handlers process it
         }
         
-        // Validate key
-        if (!this.isValidKey(event.code)) {
-            console.warn(`Invalid key: ${event.code}`);
+        // Rate limiting only for valid keys
+        if (!this.canProcessInput()) {
             return false;
         }
         
@@ -3309,23 +3308,26 @@ let keys = {};
 
 // Enhanced keyboard event handlers with validation
 window.addEventListener('keydown', (e) => {
-    // Validate and process input
-    if (!inputManager.handleKeyDown(e)) {
-        return;
+    // Try to validate and process input, but don't block on invalid keys
+    const isValidInput = inputManager.handleKeyDown(e);
+    
+    // Always update legacy keys for movement keys (bypass validation for core gameplay)
+    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+        keys[e.code] = true;
     }
     
-    // Update legacy keys object
-    keys[e.code] = true;
-    
-    // Process cheat code
-    inputManager.processCheatCode(e.code);
-    
-    // Process level selection
-    if (inputManager.processLevelSelection(e.code)) {
-        return;
+    // Only process game-specific logic for valid keys
+    if (isValidInput) {
+        // Process cheat code
+        inputManager.processCheatCode(e.code);
+        
+        // Process level selection
+        if (inputManager.processLevelSelection(e.code)) {
+            return;
+        }
     }
     
-    // Handle jump key press
+    // Always allow jump processing for valid movement keys
     if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && gameRunning) {
         // First jump
         if (!player.jumping) {
