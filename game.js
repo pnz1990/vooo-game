@@ -309,7 +309,7 @@ const GAME_CONFIG = {
         GROUND_LEVEL: 430
     },
     GAME: {
-        MAX_LEVEL: 4,
+        MAX_LEVEL: 5, // Updated to include Level 5: Banana Factory
         DEFAULT_LIVES: 3,
         CHEAT_LIVES: 999,
         LEVEL_1_SPEED_MULTIPLIER: 0.85
@@ -323,7 +323,15 @@ const GAME_CONFIG = {
     BOSS: {
         WIDTH: 100,
         HEIGHT: 120,
-        HITS_REQUIRED: 5
+        HITS_REQUIRED: 5,
+        BANANA_BOSS_HITS: 10 // Banana Boss requires 10 hits
+    },
+    LEVEL_5: {
+        CONVEYOR_SPEED: 2,
+        SYRUP_SLOWDOWN: 0.3,
+        BANANA_PEEL_SLIDE_SPEED: 4,
+        PLATFORM_COLLAPSE_TIME: 2000, // 2 seconds
+        CHECKPOINT_X: 2000 // Mid-level checkpoint
     }
 };
 
@@ -476,6 +484,22 @@ const assets = {
         frameCount: 0,
         frameDelay: 15
     },
+    banana: {
+        enemies: null,
+        boss: null,
+        width: 40,
+        height: 40,
+        spriteWidth: 1024, // Actual width of banana-enemies.png
+        spriteHeight: 1024, // Actual height of banana-enemies.png
+        frames: 1,
+        currentFrame: 0,
+        frameCount: 0,
+        frameDelay: 15,
+        bossWidth: 120,
+        bossHeight: 140,
+        bossSpriteWidth: 1024, // Actual width of banana-boss.png
+        bossSpriteHeight: 1024 // Actual height of banana-boss.png
+    },
     explosion: {
         particles: [],
         colors: ['#FF4500', '#FF6347', '#FF8C00', '#FFD700', '#FFFF00'], // Fire colors
@@ -514,6 +538,40 @@ const assets = {
         img: null,
         size: 40
     }
+};
+
+// Level 5: Banana Factory specific objects
+let bananaFactory = {
+    conveyorBelts: [],
+    syrupPools: [],
+    bananaPeels: [],
+    rotatingSlicers: [],
+    collapsingPlatforms: [],
+    checkpoint: { x: GAME_CONFIG.LEVEL_5.CHECKPOINT_X, activated: false },
+    bananaBarrels: [],
+    factoryHooks: [],
+    missiles: [] // Banana missiles from boss
+};
+
+// Banana Boss for Level 5
+let bananaBoss = {
+    x: 3800,
+    y: 300,
+    width: 120,
+    height: 140,
+    velocityX: 0,
+    velocityY: 0,
+    health: GAME_CONFIG.BOSS.BANANA_BOSS_HITS,
+    maxHealth: GAME_CONFIG.BOSS.BANANA_BOSS_HITS,
+    active: false,
+    direction: -1,
+    jumpPower: -8,
+    speed: 1.5,
+    onGround: false,
+    lastAttack: 0,
+    attackCooldown: 2000, // 2 seconds between attacks
+    invulnerable: false,
+    invulnerableTimer: 0
 };
 
 // Player object
@@ -811,6 +869,498 @@ function drawExplosions() {
             }
         });
     });
+}
+
+// Level 5: Banana Factory update functions
+function updateBananaFactory() {
+    const currentTime = performance.now();
+    
+    // Update conveyor belts and barrels
+    bananaFactory.bananaBarrels.forEach((barrel, index) => {
+        if (barrel.onConveyor) {
+            barrel.x += barrel.velocityX;
+            
+            // Remove barrels that go off screen
+            if (barrel.x < cameraX - 100 || barrel.x > cameraX + canvas.width + 100) {
+                bananaFactory.bananaBarrels.splice(index, 1);
+            }
+        }
+    });
+    
+    // Update rotating slicers
+    bananaFactory.rotatingSlicers.forEach(slicer => {
+        slicer.rotation += 0.1; // Constant rotation for visual effect
+        slicer.timer += 16; // Assuming 60fps
+        
+        if (slicer.active) {
+            if (slicer.timer >= slicer.activeTime) {
+                slicer.active = false;
+                slicer.timer = 0;
+            }
+        } else {
+            if (slicer.timer >= slicer.inactiveTime) {
+                slicer.active = true;
+                slicer.timer = 0;
+            }
+        }
+    });
+    
+    // Update collapsing platforms
+    bananaFactory.collapsingPlatforms.forEach(platform => {
+        if (!platform.stable && !platform.collapsed) {
+            platform.collapseTimer += 16;
+            if (platform.collapseTimer >= GAME_CONFIG.LEVEL_5.PLATFORM_COLLAPSE_TIME) {
+                platform.collapsed = true;
+            }
+        }
+    });
+    
+    // Update swinging factory hooks
+    bananaFactory.factoryHooks.forEach(hook => {
+        hook.swingAngle += hook.swingSpeed;
+        if (hook.swingAngle > hook.swingRange || hook.swingAngle < -hook.swingRange) {
+            hook.swingSpeed *= -1;
+        }
+    });
+    
+    // Check player interactions with factory elements
+    checkBananaFactoryCollisions();
+    
+    // Update banana enemy throwing behavior
+    enemies.forEach(enemy => {
+        if (enemy.type === 'banana' && enemy.active) {
+            enemy.throwTimer += 16;
+            if (enemy.throwTimer >= enemy.throwCooldown) {
+                throwBananaPeel(enemy);
+                enemy.throwTimer = 0;
+            }
+        }
+    });
+    
+    // Update banana missiles
+    bananaFactory.missiles.forEach((missile, index) => {
+        missile.x += missile.velocityX;
+        missile.y += missile.velocityY;
+        missile.velocityY += 0.3; // Gravity effect
+        
+        // Remove missiles that hit ground or go off screen
+        if (missile.y > canvas.height - 40 || missile.x < cameraX - 100 || missile.x > cameraX + canvas.width + 100) {
+            bananaFactory.missiles.splice(index, 1);
+        }
+    });
+    
+    // Check checkpoint activation
+    if (!bananaFactory.checkpoint.activated && player.x >= bananaFactory.checkpoint.x) {
+        bananaFactory.checkpoint.activated = true;
+        showMessage("Checkpoint reached!", 2000);
+    }
+}
+
+function updateBananaBoss() {
+    if (!bananaBoss.active) {
+        // Activate boss when player gets close
+        if (Math.abs(player.x - bananaBoss.x) < 400) {
+            bananaBoss.active = true;
+            showMessage("Banana Boss appears!", 2000);
+        }
+        return;
+    }
+    
+    const currentTime = performance.now();
+    
+    // Boss movement AI
+    if (bananaBoss.health > 0) {
+        // Move towards player
+        if (player.x < bananaBoss.x) {
+            bananaBoss.velocityX = -bananaBoss.speed;
+            bananaBoss.direction = -1;
+        } else {
+            bananaBoss.velocityX = bananaBoss.speed;
+            bananaBoss.direction = 1;
+        }
+        
+        // Jump occasionally
+        if (bananaBoss.onGround && Math.random() < 0.02) {
+            bananaBoss.velocityY = bananaBoss.jumpPower;
+            bananaBoss.onGround = false;
+        }
+        
+        // Attack with banana missiles
+        if (currentTime - bananaBoss.lastAttack > bananaBoss.attackCooldown) {
+            fireBananaMissile();
+            bananaBoss.lastAttack = currentTime;
+        }
+    }
+    
+    // Apply physics
+    bananaBoss.x += bananaBoss.velocityX;
+    bananaBoss.y += bananaBoss.velocityY;
+    bananaBoss.velocityY += gravity;
+    
+    // Ground collision
+    if (bananaBoss.y >= canvas.height - 40 - bananaBoss.height) {
+        bananaBoss.y = canvas.height - 40 - bananaBoss.height;
+        bananaBoss.velocityY = 0;
+        bananaBoss.onGround = true;
+    }
+    
+    // Update invulnerability
+    if (bananaBoss.invulnerable) {
+        bananaBoss.invulnerableTimer -= 16;
+        if (bananaBoss.invulnerableTimer <= 0) {
+            bananaBoss.invulnerable = false;
+        }
+    }
+    
+    // Check collision with player
+    if (checkCollision(player, bananaBoss) && !player.invulnerable) {
+        if (player.velocityY > 0 && player.y < bananaBoss.y && !bananaBoss.invulnerable) {
+            // Player jumped on boss
+            bananaBoss.health--;
+            bananaBoss.invulnerable = true;
+            bananaBoss.invulnerableTimer = 1000; // 1 second invulnerability
+            
+            player.velocityY = -8; // Bounce player up
+            
+            if (bananaBoss.health <= 0) {
+                bananaBoss.active = false;
+                score += 1000;
+                showMessage("Banana Boss defeated! +1000 points", 3000);
+                updateScoreDisplay();
+            } else {
+                showMessage(`Banana Boss health: ${bananaBoss.health}`, 1000);
+            }
+        } else {
+            // Boss damages player
+            player.isAlive = false;
+        }
+    }
+}
+
+function checkBananaFactoryCollisions() {
+    // Check conveyor belt collisions
+    bananaFactory.conveyorBelts.forEach(belt => {
+        if (checkCollision(player, belt) && player.velocityY >= 0) {
+            player.y = belt.y - player.height;
+            player.velocityY = 0;
+            player.jumping = false;
+            player.doubleJumping = false;
+            player.canDoubleJump = doubleJumpEnabled;
+            
+            // Move player with conveyor
+            player.x += belt.direction * belt.speed;
+        }
+    });
+    
+    // Check syrup pool collisions (sticky surfaces)
+    bananaFactory.syrupPools.forEach(pool => {
+        if (checkCollision(player, pool)) {
+            player.moveSpeed = GAME_CONFIG.PLAYER.BASE_SPEED * speedMultiplier * GAME_CONFIG.LEVEL_5.SYRUP_SLOWDOWN;
+        } else {
+            player.moveSpeed = GAME_CONFIG.PLAYER.BASE_SPEED * speedMultiplier;
+        }
+    });
+    
+    // Check banana peel collisions (slippery surfaces)
+    bananaFactory.bananaPeels.forEach(peel => {
+        if (peel.active && checkCollision(player, peel)) {
+            // Start sliding
+            player.velocityX = GAME_CONFIG.LEVEL_5.BANANA_PEEL_SLIDE_SPEED * (player.velocityX > 0 ? 1 : -1);
+            player.sliding = true;
+        }
+    });
+    
+    // Check rotating slicer collisions
+    bananaFactory.rotatingSlicers.forEach(slicer => {
+        if (slicer.active && checkCollision(player, slicer)) {
+            player.isAlive = false;
+        }
+    });
+    
+    // Check collapsing platform collisions
+    bananaFactory.collapsingPlatforms.forEach(platform => {
+        if (!platform.collapsed && checkCollision(player, platform) && player.velocityY >= 0) {
+            player.y = platform.y - player.height;
+            player.velocityY = 0;
+            player.jumping = false;
+            player.doubleJumping = false;
+            player.canDoubleJump = doubleJumpEnabled;
+            
+            // Start collapse timer
+            if (platform.stable) {
+                platform.stable = false;
+                platform.collapseTimer = 0;
+            }
+        }
+    });
+    
+    // Check factory hook collisions (moving platforms)
+    bananaFactory.factoryHooks.forEach(hook => {
+        const hookX = hook.x + Math.sin(hook.swingAngle) * 100;
+        const hookY = hook.y + Math.cos(hook.swingAngle) * 50;
+        const hookPlatform = { x: hookX, y: hookY, width: hook.width, height: hook.height };
+        
+        if (checkCollision(player, hookPlatform) && player.velocityY >= 0) {
+            player.y = hookY - player.height;
+            player.velocityY = 0;
+            player.jumping = false;
+            player.doubleJumping = false;
+            player.canDoubleJump = doubleJumpEnabled;
+        }
+    });
+    
+    // Check banana barrel collisions
+    bananaFactory.bananaBarrels.forEach(barrel => {
+        if (checkCollision(player, barrel)) {
+            player.isAlive = false;
+        }
+    });
+    
+    // Check banana missile collisions
+    bananaFactory.missiles.forEach((missile, index) => {
+        if (checkCollision(player, missile)) {
+            player.isAlive = false;
+            bananaFactory.missiles.splice(index, 1);
+        }
+    });
+}
+
+function throwBananaPeel(enemy) {
+    // Create a banana peel projectile
+    const peel = {
+        x: enemy.x,
+        y: enemy.y,
+        width: 30,
+        height: 10,
+        velocityX: (player.x > enemy.x ? 3 : -3),
+        velocityY: -5,
+        lifetime: 600, // 10 seconds at 60fps
+        active: true
+    };
+    
+    bananaFactory.bananaPeels.push(peel);
+}
+
+function fireBananaMissile() {
+    const missile = {
+        x: bananaBoss.x + bananaBoss.width / 2,
+        y: bananaBoss.y,
+        width: 20,
+        height: 20,
+        velocityX: (player.x > bananaBoss.x ? 4 : -4),
+        velocityY: -8
+    };
+    
+    bananaFactory.missiles.push(missile);
+}
+
+// Level 5: Banana Factory drawing functions
+function drawBananaFactory() {
+    // Draw factory background elements
+    ctx.fillStyle = '#444444';
+    ctx.fillRect(0 - cameraX, 0, 4000, canvas.height);
+    
+    // Draw factory pipes and machinery (background)
+    ctx.fillStyle = '#666666';
+    for (let i = 0; i < 10; i++) {
+        const pipeX = 500 + i * 400 - cameraX;
+        ctx.fillRect(pipeX, 50, 20, 200);
+        ctx.fillRect(pipeX - 10, 40, 40, 20);
+    }
+    
+    // Draw conveyor belts
+    bananaFactory.conveyorBelts.forEach(belt => {
+        const screenX = belt.x - cameraX;
+        if (screenX > -belt.width && screenX < canvas.width) {
+            // Belt surface
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(screenX, belt.y, belt.width, belt.height);
+            
+            // Belt direction indicators
+            ctx.fillStyle = '#654321';
+            for (let i = 0; i < belt.width; i += 20) {
+                const indicatorX = screenX + i + (performance.now() * belt.direction * 0.1) % 20;
+                ctx.fillRect(indicatorX, belt.y + 5, 10, 10);
+            }
+        }
+    });
+    
+    // Draw syrup pools
+    bananaFactory.syrupPools.forEach(pool => {
+        const screenX = pool.x - cameraX;
+        if (screenX > -pool.width && screenX < canvas.width) {
+            ctx.fillStyle = '#DAA520';
+            ctx.fillRect(screenX, pool.y, pool.width, pool.height);
+            
+            // Sticky effect
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(screenX + 5, pool.y + 2, pool.width - 10, pool.height - 4);
+        }
+    });
+    
+    // Draw banana peels
+    bananaFactory.bananaPeels.forEach(peel => {
+        if (peel.active) {
+            const screenX = peel.x - cameraX;
+            if (screenX > -peel.width && screenX < canvas.width) {
+                ctx.fillStyle = '#FFFF00';
+                ctx.fillRect(screenX, peel.y, peel.width, peel.height);
+                
+                // Peel shape
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.ellipse(screenX + peel.width/2, peel.y + peel.height/2, peel.width/3, peel.height/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    });
+    
+    // Draw rotating slicers
+    bananaFactory.rotatingSlicers.forEach(slicer => {
+        const screenX = slicer.x - cameraX;
+        if (screenX > -slicer.width && screenX < canvas.width) {
+            ctx.save();
+            ctx.translate(screenX + slicer.width/2, slicer.y + slicer.height/2);
+            ctx.rotate(slicer.rotation);
+            
+            // Slicer blades
+            if (slicer.active) {
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(-slicer.width/2, -5, slicer.width, 10);
+                ctx.fillRect(-5, -slicer.height/2, 10, slicer.height);
+            } else {
+                ctx.fillStyle = '#888888';
+                ctx.fillRect(-slicer.width/2, -5, slicer.width, 10);
+                ctx.fillRect(-5, -slicer.height/2, 10, slicer.height);
+            }
+            
+            ctx.restore();
+        }
+    });
+    
+    // Draw collapsing platforms
+    bananaFactory.collapsingPlatforms.forEach(platform => {
+        if (!platform.collapsed) {
+            const screenX = platform.x - cameraX;
+            if (screenX > -platform.width && screenX < canvas.width) {
+                if (platform.stable) {
+                    ctx.fillStyle = '#8B4513';
+                } else {
+                    // Flashing red when about to collapse
+                    ctx.fillStyle = Math.sin(performance.now() * 0.01) > 0 ? '#FF0000' : '#8B4513';
+                }
+                ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+            }
+        }
+    });
+    
+    // Draw factory hooks
+    bananaFactory.factoryHooks.forEach(hook => {
+        const hookX = hook.x + Math.sin(hook.swingAngle) * 100 - cameraX;
+        const hookY = hook.y + Math.cos(hook.swingAngle) * 50;
+        
+        if (hookX > -hook.width && hookX < canvas.width) {
+            // Chain
+            ctx.strokeStyle = '#666666';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(hook.x - cameraX, hook.y - 50);
+            ctx.lineTo(hookX + hook.width/2, hookY);
+            ctx.stroke();
+            
+            // Platform
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(hookX, hookY, hook.width, hook.height);
+        }
+    });
+    
+    // Draw banana barrels
+    bananaFactory.bananaBarrels.forEach(barrel => {
+        const screenX = barrel.x - cameraX;
+        if (screenX > -barrel.width && screenX < canvas.width) {
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(screenX, barrel.y, barrel.width, barrel.height);
+            
+            // Barrel bands
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(screenX, barrel.y + 5, barrel.width, 3);
+            ctx.fillRect(screenX, barrel.y + barrel.height - 8, barrel.width, 3);
+        }
+    });
+    
+    // Draw banana missiles
+    bananaFactory.missiles.forEach(missile => {
+        const screenX = missile.x - cameraX;
+        if (screenX > -missile.width && screenX < canvas.width) {
+            ctx.fillStyle = '#FFFF00';
+            ctx.fillRect(screenX, missile.y, missile.width, missile.height);
+            
+            // Missile trail
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(screenX - 10, missile.y + missile.height/2 - 2, 10, 4);
+        }
+    });
+    
+    // Draw checkpoint
+    if (bananaFactory.checkpoint.activated) {
+        const checkpointX = bananaFactory.checkpoint.x - cameraX;
+        if (checkpointX > -50 && checkpointX < canvas.width) {
+            ctx.fillStyle = '#00FF00';
+            ctx.fillRect(checkpointX, canvas.height - 100, 10, 60);
+            ctx.fillText('CHECKPOINT', checkpointX - 30, canvas.height - 110);
+        }
+    }
+}
+
+function drawBananaBoss() {
+    if (!bananaBoss.active || bananaBoss.health <= 0) return;
+    
+    const screenX = bananaBoss.x - cameraX;
+    if (screenX > -bananaBoss.width && screenX < canvas.width) {
+        // Boss body
+        if (bananaBoss.invulnerable && Math.sin(performance.now() * 0.02) > 0) {
+            ctx.fillStyle = '#FF0000'; // Flash red when invulnerable
+        } else {
+            ctx.fillStyle = '#FFFF00';
+        }
+        
+        ctx.fillRect(screenX, bananaBoss.y, bananaBoss.width, bananaBoss.height);
+        
+        // Boss details
+        ctx.fillStyle = '#FFD700';
+        ctx.fillRect(screenX + 10, bananaBoss.y + 10, bananaBoss.width - 20, bananaBoss.height - 20);
+        
+        // Boss eyes
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(screenX + 20, bananaBoss.y + 30, 15, 15);
+        ctx.fillRect(screenX + bananaBoss.width - 35, bananaBoss.y + 30, 15, 15);
+        
+        // Boss health bar
+        const healthBarWidth = 200;
+        const healthBarHeight = 20;
+        const healthBarX = screenX + bananaBoss.width/2 - healthBarWidth/2;
+        const healthBarY = bananaBoss.y - 40;
+        
+        // Background
+        ctx.fillStyle = '#FF0000';
+        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+        
+        // Health
+        ctx.fillStyle = '#00FF00';
+        const healthPercent = bananaBoss.health / bananaBoss.maxHealth;
+        ctx.fillRect(healthBarX, healthBarY, healthBarWidth * healthPercent, healthBarHeight);
+        
+        // Border
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+        
+        // Health text
+        ctx.fillStyle = '#000000';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Banana Boss: ${bananaBoss.health}/${bananaBoss.maxHealth}`, screenX + bananaBoss.width/2, healthBarY - 5);
+    }
 }
 
 // Enhanced logging and error handling system
@@ -1248,6 +1798,23 @@ function loadAssets() {
     assets.background.layers.forEach(layer => {
         bgCtx.drawImage(layer.img, 0, 0);
     });
+    
+    // Level 5: Load banana assets
+    if (currentLevel === 5) {
+        assets.banana.enemies = new Image();
+        assets.banana.enemies.src = 'banana-enemies.png';
+        
+        assets.banana.boss = new Image();
+        assets.banana.boss.src = 'banana-boss.png';
+        
+        // Make banana enemies bigger for better visibility
+        assets.banana.width = 60;
+        assets.banana.height = 60;
+        
+        // Make banana boss bigger
+        assets.banana.bossWidth = 140;
+        assets.banana.bossHeight = 160;
+    }
 }
 
 // Initialize level
@@ -1611,6 +2178,11 @@ function initLevel() {
     // Set level end - further away
     levelEnd = { x: 8200, width: 50, height: 500 };
     
+    // Level 5: Banana Factory specific initialization
+    if (currentLevel === 5) {
+        initBananaFactory();
+    }
+    
     updateScoreDisplay();
     updateLivesDisplay();
 }
@@ -1624,6 +2196,126 @@ function updateScoreDisplay() {
 // Update lives display
 function updateLivesDisplay() {
     livesElement.textContent = `Lives: ${lives}`;
+}
+
+// Level 5: Banana Factory initialization
+function initBananaFactory() {
+    // Clear existing factory elements
+    bananaFactory.conveyorBelts = [];
+    bananaFactory.syrupPools = [];
+    bananaFactory.bananaPeels = [];
+    bananaFactory.rotatingSlicers = [];
+    bananaFactory.collapsingPlatforms = [];
+    bananaFactory.bananaBarrels = [];
+    bananaFactory.factoryHooks = [];
+    bananaFactory.missiles = [];
+    
+    // Reset checkpoint
+    bananaFactory.checkpoint.activated = false;
+    
+    // Create conveyor belts
+    bananaFactory.conveyorBelts = [
+        { x: 800, y: 380, width: 300, height: 20, direction: 1, speed: GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED },
+        { x: 1400, y: 320, width: 250, height: 20, direction: -1, speed: GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED },
+        { x: 2000, y: 280, width: 400, height: 20, direction: 1, speed: GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED },
+        { x: 2800, y: 350, width: 300, height: 20, direction: -1, speed: GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED },
+        { x: 3400, y: 300, width: 350, height: 20, direction: 1, speed: GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED }
+    ];
+    
+    // Create syrup pools (sticky surfaces)
+    bananaFactory.syrupPools = [
+        { x: 1200, y: 430, width: 150, height: 10 },
+        { x: 1800, y: 430, width: 120, height: 10 },
+        { x: 2600, y: 430, width: 180, height: 10 },
+        { x: 3200, y: 430, width: 140, height: 10 }
+    ];
+    
+    // Create banana peels (slippery surfaces)
+    bananaFactory.bananaPeels = [
+        { x: 900, y: 420, width: 40, height: 10, active: true },
+        { x: 1500, y: 420, width: 40, height: 10, active: true },
+        { x: 2200, y: 420, width: 40, height: 10, active: true },
+        { x: 2900, y: 420, width: 40, height: 10, active: true },
+        { x: 3600, y: 420, width: 40, height: 10, active: true }
+    ];
+    
+    // Create rotating slicers
+    bananaFactory.rotatingSlicers = [
+        { x: 1100, y: 200, width: 60, height: 60, rotation: 0, active: true, timer: 0, activeTime: 3000, inactiveTime: 2000 },
+        { x: 1700, y: 150, width: 60, height: 60, rotation: 0, active: false, timer: 1000, activeTime: 3000, inactiveTime: 2000 },
+        { x: 2400, y: 180, width: 60, height: 60, rotation: 0, active: true, timer: 500, activeTime: 3000, inactiveTime: 2000 },
+        { x: 3100, y: 160, width: 60, height: 60, rotation: 0, active: false, timer: 1500, activeTime: 3000, inactiveTime: 2000 }
+    ];
+    
+    // Create collapsing platforms
+    bananaFactory.collapsingPlatforms = [
+        { x: 1300, y: 250, width: 100, height: 20, stable: true, collapseTimer: 0, collapsed: false },
+        { x: 1900, y: 200, width: 120, height: 20, stable: true, collapseTimer: 0, collapsed: false },
+        { x: 2500, y: 220, width: 100, height: 20, stable: true, collapseTimer: 0, collapsed: false },
+        { x: 3300, y: 180, width: 110, height: 20, stable: true, collapseTimer: 0, collapsed: false }
+    ];
+    
+    // Create banana barrels on conveyor belts
+    bananaFactory.bananaBarrels = [
+        { x: 850, y: 340, width: 30, height: 30, velocityX: GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED, onConveyor: true },
+        { x: 1450, y: 280, width: 30, height: 30, velocityX: -GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED, onConveyor: true },
+        { x: 2100, y: 240, width: 30, height: 30, velocityX: GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED, onConveyor: true },
+        { x: 2850, y: 310, width: 30, height: 30, velocityX: -GAME_CONFIG.LEVEL_5.CONVEYOR_SPEED, onConveyor: true }
+    ];
+    
+    // Create swinging factory hooks
+    bananaFactory.factoryHooks = [
+        { x: 1600, y: 100, width: 80, height: 15, swingAngle: 0, swingSpeed: 0.02, swingRange: Math.PI / 3 },
+        { x: 2300, y: 80, width: 80, height: 15, swingAngle: Math.PI / 2, swingSpeed: 0.025, swingRange: Math.PI / 4 },
+        { x: 3000, y: 90, width: 80, height: 15, swingAngle: Math.PI, swingSpeed: 0.02, swingRange: Math.PI / 3 }
+    ];
+    
+    // Initialize Banana Boss
+    bananaBoss.x = 3800;
+    bananaBoss.y = 300;
+    bananaBoss.health = GAME_CONFIG.BOSS.BANANA_BOSS_HITS;
+    bananaBoss.active = false; // Activated when player gets close
+    bananaBoss.invulnerable = false;
+    bananaBoss.invulnerableTimer = 0;
+    bananaBoss.lastAttack = 0;
+    
+    // Replace regular enemies with banana enemies
+    enemies = [];
+    for (let i = 0; i < 25; i++) {
+        const enemyX = 600 + Math.random() * 3000; // Spread across factory
+        const enemyY = 350 + Math.random() * 50;
+        
+        enemies.push({
+            x: enemyX,
+            y: enemyY,
+            width: assets.banana.width,
+            height: assets.banana.height,
+            velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+            active: true,
+            type: 'banana',
+            throwTimer: 0,
+            throwCooldown: 3000 + Math.random() * 2000 // 3-5 seconds between throws
+        });
+    }
+    
+    // Add banana enemies on platforms and conveyor belts
+    bananaFactory.conveyorBelts.forEach(belt => {
+        if (Math.random() < 0.6) { // 60% chance for enemy on belt
+            enemies.push({
+                x: belt.x + belt.width / 2,
+                y: belt.y - assets.banana.height,
+                width: assets.banana.width,
+                height: assets.banana.height,
+                velocityX: belt.direction * belt.speed * 0.5, // Move with belt but slower
+                active: true,
+                type: 'banana',
+                onConveyor: true,
+                conveyorBelt: belt,
+                throwTimer: 0,
+                throwCooldown: 3000 + Math.random() * 2000
+            });
+        }
+    });
 }
 
 // Level selection animation loop
@@ -1708,6 +2400,12 @@ function gameLoop(currentTime = performance.now()) {
         // Update boss
         updateBoss();
         
+        // Level 5: Update Banana Factory elements
+        if (currentLevel === 5) {
+            updateBananaFactory();
+            updateBananaBoss();
+        }
+        
         // Update explosions
         updateExplosions();
         
@@ -1720,6 +2418,11 @@ function gameLoop(currentTime = performance.now()) {
         // Draw level end
         drawLevelEnd();
         
+        // Level 5: Draw Banana Factory elements
+        if (currentLevel === 5) {
+            drawBananaFactory();
+        }
+        
         // Draw player
         drawPlayer();
         
@@ -1728,6 +2431,11 @@ function gameLoop(currentTime = performance.now()) {
         
         // Draw boss
         drawBoss();
+        
+        // Level 5: Draw Banana Boss
+        if (currentLevel === 5) {
+            drawBananaBoss();
+        }
         
         // Draw explosions
         drawExplosions();
@@ -2749,6 +3457,14 @@ function drawLevelSelectionScreen(title) {
             color: '#9C27B0',
             hoverColor: '#7b1fa2',
             icon: '👹'
+        },
+        {
+            number: 5,
+            title: 'Banana Factory',
+            subtitle: 'Industrial chaos',
+            color: '#FFD700',
+            hoverColor: '#FFC107',
+            icon: '🍌'
         }
     ];
     
@@ -3133,8 +3849,8 @@ class InputManager {
         this.validKeys = new Set([
             'KeyW', 'KeyA', 'KeyS', 'KeyD',
             'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-            'Space', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit9',
-            'Numpad1', 'Numpad2', 'Numpad3', 'Numpad4', 'Numpad9'
+            'Space', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit9',
+            'Numpad1', 'Numpad2', 'Numpad3', 'Numpad4', 'Numpad5', 'Numpad9'
         ]);
         this.cheatSequence = [];
         this.lastInputTime = 0;
@@ -3296,7 +4012,8 @@ class InputManager {
             'Digit1': 1, 'Numpad1': 1,
             'Digit2': 2, 'Numpad2': 2,
             'Digit3': 3, 'Numpad3': 3,
-            'Digit4': 4, 'Numpad4': 4
+            'Digit4': 4, 'Numpad4': 4,
+            'Digit5': 5, 'Numpad5': 5  // Added Level 5: Banana Factory
         };
         
         const selectedLevel = levelMap[keyCode];
