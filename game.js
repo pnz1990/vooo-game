@@ -719,6 +719,7 @@ const explosionPool = new ObjectPool(createExplosionObject, resetExplosion, 20);
 let platforms = [];
 let enemies = []; // Will be replaced with pool system gradually
 let obstacles = [];
+let collectibles = []; // Array for collectible items like bananas
 let explosions = []; // Will be replaced with pool system
 
 // Memory management utilities
@@ -2093,9 +2094,9 @@ function initLevel() {
             { x: 1600, y: canvas.height - 40, width: 500, height: 40, type: 'ground' },
             { x: 2200, y: canvas.height - 40, width: 400, height: 40, type: 'ground' },
             { x: 2700, y: canvas.height - 40, width: 600, height: 40, type: 'ground' },
-            { x: 3400, y: canvas.height - 40, width: 600, height: 40, type: 'ground' },
-            // Boss area floor - extended and clear, no gaps
-            { x: 4100, y: canvas.height - 40, width: 1000, height: 40, type: 'ground' }
+            { x: 3400, y: canvas.height - 40, width: 800, height: 40, type: 'ground' }, // Extended to close gap
+            // Boss area floor - continuous with no gaps
+            { x: 4200, y: canvas.height - 40, width: 1000, height: 40, type: 'ground' }
         );
         
         // Factory platforms at different heights (NO platforms in boss area after x=3800)
@@ -2494,13 +2495,41 @@ function initBananaFactory() {
         { x: 3100, y: 160, width: 60, height: 60, rotation: 0, active: false, timer: 1500, activeTime: 3000, inactiveTime: 2000 }
     ];
     
-    // Create collapsing platforms
-    bananaFactory.collapsingPlatforms = [
-        { x: 1300, y: 250, width: 100, height: 20, stable: true, collapseTimer: 0, collapsed: false },
-        { x: 1900, y: 200, width: 120, height: 20, stable: true, collapseTimer: 0, collapsed: false },
-        { x: 2500, y: 220, width: 100, height: 20, stable: true, collapseTimer: 0, collapsed: false },
-        { x: 3300, y: 180, width: 110, height: 20, stable: true, collapseTimer: 0, collapsed: false }
-    ];
+    // Remove collapsing platforms - they are removed for better gameplay
+    bananaFactory.collapsingPlatforms = [];
+    
+    // Create banana collectibles on platforms and ground
+    collectibles = [];
+    
+    // Add bananas on ground platforms
+    for (let i = 0; i < platforms.length; i++) {
+        const platform = platforms[i];
+        if (platform.type === 'ground') {
+            // Add bananas on ground platforms
+            for (let x = platform.x + 50; x < platform.x + platform.width - 50; x += 150) {
+                collectibles.push({
+                    x: x,
+                    y: platform.y - 25,
+                    width: 20,
+                    height: 25,
+                    type: 'banana',
+                    collected: false
+                });
+            }
+        } else {
+            // Add bananas on regular platforms
+            for (let x = platform.x + 20; x < platform.x + platform.width - 20; x += 80) {
+                collectibles.push({
+                    x: x,
+                    y: platform.y - 25,
+                    width: 20,
+                    height: 25,
+                    type: 'banana',
+                    collected: false
+                });
+            }
+        }
+    }
     
     // Create banana barrels on conveyor belts
     bananaFactory.bananaBarrels = [
@@ -2703,8 +2732,14 @@ function gameLoop(currentTime = performance.now()) {
         // Update explosions
         updateExplosions();
         
+        // Update collectibles
+        updateCollectibles();
+        
         // Draw platforms
         drawPlatforms();
+        
+        // Draw collectibles
+        drawCollectibles();
         
         // Draw obstacles
         drawObstacles();
@@ -3277,10 +3312,7 @@ function drawPlatforms() {
         // Skip drawing non-ground platforms in boss area for all levels
         if (currentLevel === 5) {
             // Level 5: Skip non-ground platforms in boss area (x > 3500) to clear boss fighting space
-            if (platform.x > 3500 && platform.type !== 'ground') {
-                console.log(`Skipping platform at x=${platform.x}, type=${platform.type} (boss area)`);
-                return;
-            }
+            if (platform.x > 3500 && platform.type !== 'ground') return;
         } else {
             // Other levels: Skip platforms in boss area (x > 7400) except ground
             if (platform.x > 7400 && platform.type !== 'ground') return;
@@ -3405,6 +3437,53 @@ function drawPlatforms() {
             console.error("Error drawing platform:", e);
             ctx.fillStyle = platform.type === 'ground' ? '#654321' : '#808080';
             ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+        }
+    });
+}
+
+// Update collectibles
+function updateCollectibles() {
+    collectibles.forEach(collectible => {
+        if (!collectible.collected && checkCollision(player, collectible)) {
+            collectible.collected = true;
+            score += 10; // Add points for collecting bananas
+            
+            // Create small explosion effect
+            createExplosion(collectible.x + collectible.width/2, collectible.y + collectible.height/2, 5);
+        }
+    });
+}
+
+// Draw collectibles
+function drawCollectibles() {
+    collectibles.forEach(collectible => {
+        if (!collectible.collected) {
+            const screenX = collectible.x - cameraX;
+            
+            // Skip if off-screen
+            if (screenX + collectible.width < 0 || screenX > canvas.width) return;
+            
+            if (collectible.type === 'banana') {
+                // Draw banana
+                ctx.fillStyle = '#FFD700'; // Gold color
+                
+                // Banana body (curved)
+                ctx.beginPath();
+                ctx.ellipse(screenX + collectible.width/2, collectible.y + collectible.height/2, 
+                           collectible.width/2, collectible.height/2, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Banana highlight
+                ctx.fillStyle = '#FFFF99';
+                ctx.beginPath();
+                ctx.ellipse(screenX + collectible.width/2 - 3, collectible.y + collectible.height/2 - 3, 
+                           collectible.width/4, collectible.height/4, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Banana stem
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(screenX + collectible.width/2 - 1, collectible.y - 3, 2, 5);
+            }
         }
     });
 }
