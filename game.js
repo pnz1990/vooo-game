@@ -1181,37 +1181,44 @@ function fireBananaMissile() {
 // Level 5: Banana Factory drawing functions
 // Level 5: Banana Factory background (drawn before platforms)
 function drawBananaFactoryBackground() {
-    // Draw industrial factory background with depth
+    // Draw industrial factory background with depth - ONLY in factory area, not boss area
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, '#2C3E50'); // Dark blue-gray at top
     gradient.addColorStop(0.3, '#34495E'); // Medium blue-gray
     gradient.addColorStop(0.7, '#5D6D7E'); // Lighter blue-gray
     gradient.addColorStop(1, '#85929E'); // Light gray at bottom
     ctx.fillStyle = gradient;
-    ctx.fillRect(0 - cameraX, 0, 6000, canvas.height);
+    // Only draw background in factory area (x=0 to x=4000), not in boss area
+    ctx.fillRect(0 - cameraX, 0, 4000, canvas.height);
     
     // Draw industrial pipes and machinery with better detail (background elements)
-    for (let i = 0; i < 15; i++) {
-        const pipeX = 300 + i * 300 - cameraX;
+    // Only draw pipes in factory area, not boss area
+    for (let i = 0; i < 12; i++) { // Reduced from 15 to 12 to stay in factory area
+        const pipeX = 300 + i * 300;
+        
+        // Skip pipes that would be in boss area
+        if (pipeX > 4000) continue;
+        
+        const screenPipeX = pipeX - cameraX;
         const pipeHeight = 150 + Math.sin(i * 0.5) * 50;
         
         // Main pipe
         ctx.fillStyle = '#7F8C8D';
-        ctx.fillRect(pipeX, 60, 25, pipeHeight);
+        ctx.fillRect(screenPipeX, 60, 25, pipeHeight);
         
         // Pipe joints
         ctx.fillStyle = '#95A5A6';
-        ctx.fillRect(pipeX - 5, 55, 35, 15);
-        ctx.fillRect(pipeX - 5, 60 + pipeHeight, 35, 15);
+        ctx.fillRect(screenPipeX - 5, 55, 35, 15);
+        ctx.fillRect(screenPipeX - 5, 60 + pipeHeight, 35, 15);
         
         // Pipe bolts
         ctx.fillStyle = '#34495E';
         for (let j = 0; j < 3; j++) {
             ctx.beginPath();
-            ctx.arc(pipeX - 2 + j * 15, 62, 2, 0, Math.PI * 2);
+            ctx.arc(screenPipeX - 2 + j * 15, 62, 2, 0, Math.PI * 2);
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(pipeX - 2 + j * 15, 60 + pipeHeight + 8, 2, 0, Math.PI * 2);
+            ctx.arc(screenPipeX - 2 + j * 15, 60 + pipeHeight + 8, 2, 0, Math.PI * 2);
             ctx.fill();
         }
         
@@ -1220,34 +1227,39 @@ function drawBananaFactoryBackground() {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
             for (let s = 0; s < 5; s++) {
                 ctx.beginPath();
-                ctx.arc(pipeX + 12 + Math.sin(performance.now() * 0.01 + s) * 5, 
+                ctx.arc(screenPipeX + 12 + Math.sin(performance.now() * 0.01 + s) * 5, 
                        50 - s * 8, 3 - s * 0.5, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
     }
     
-    // Draw factory windows with lighting
-    for (let i = 0; i < 8; i++) {
-        const windowX = 400 + i * 500 - cameraX;
+    // Draw factory windows with lighting (only in factory area)
+    for (let i = 0; i < 6; i++) { // Reduced from 8 to 6 to stay in factory area
+        const windowX = 400 + i * 500;
+        
+        // Skip windows that would be in boss area
+        if (windowX > 4000) continue;
+        
+        const screenWindowX = windowX - cameraX;
         const windowY = 80 + Math.sin(i * 0.3) * 20;
         
         // Window frame
         ctx.fillStyle = '#2C3E50';
-        ctx.fillRect(windowX, windowY, 80, 60);
+        ctx.fillRect(screenWindowX, windowY, 80, 60);
         
         // Window glass with reflection
-        const windowGradient = ctx.createLinearGradient(windowX, windowY, windowX + 80, windowY + 60);
+        const windowGradient = ctx.createLinearGradient(screenWindowX, windowY, screenWindowX + 80, windowY + 60);
         windowGradient.addColorStop(0, '#3498DB');
         windowGradient.addColorStop(0.5, '#5DADE2');
         windowGradient.addColorStop(1, '#85C1E9');
         ctx.fillStyle = windowGradient;
-        ctx.fillRect(windowX + 5, windowY + 5, 70, 50);
+        ctx.fillRect(screenWindowX + 5, windowY + 5, 70, 50);
         
         // Window cross
         ctx.fillStyle = '#2C3E50';
-        ctx.fillRect(windowX + 37, windowY + 5, 6, 50);
-        ctx.fillRect(windowX + 5, windowY + 27, 70, 6);
+        ctx.fillRect(screenWindowX + 37, windowY + 5, 6, 50);
+        ctx.fillRect(screenWindowX + 5, windowY + 27, 70, 6);
     }
 }
 
@@ -1425,11 +1437,6 @@ function drawBananaFactory() {
             ctx.strokeStyle = '#8B4513';
             ctx.lineWidth = 2;
             ctx.strokeRect(hookX, hookY, hook.width, hook.height);
-            
-            // Debug: Add text to show it's working
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = '12px Arial';
-            ctx.fillText(`Hook ${index}`, hookX + 5, hookY - 5);
         }
     });
     
@@ -2498,38 +2505,8 @@ function initBananaFactory() {
     // Remove collapsing platforms - they are removed for better gameplay
     bananaFactory.collapsingPlatforms = [];
     
-    // Create banana collectibles on platforms and ground
+    // Clear collectibles (not needed for Level 5)
     collectibles = [];
-    
-    // Add bananas on ground platforms
-    for (let i = 0; i < platforms.length; i++) {
-        const platform = platforms[i];
-        if (platform.type === 'ground') {
-            // Add bananas on ground platforms
-            for (let x = platform.x + 50; x < platform.x + platform.width - 50; x += 150) {
-                collectibles.push({
-                    x: x,
-                    y: platform.y - 25,
-                    width: 20,
-                    height: 25,
-                    type: 'banana',
-                    collected: false
-                });
-            }
-        } else {
-            // Add bananas on regular platforms
-            for (let x = platform.x + 20; x < platform.x + platform.width - 20; x += 80) {
-                collectibles.push({
-                    x: x,
-                    y: platform.y - 25,
-                    width: 20,
-                    height: 25,
-                    type: 'banana',
-                    collected: false
-                });
-            }
-        }
-    }
     
     // Create banana barrels on conveyor belts
     bananaFactory.bananaBarrels = [
@@ -2597,9 +2574,11 @@ function initBananaFactory() {
         });
     }
     
-    // Replace regular enemies with banana enemies
+    // Replace regular enemies with banana enemies - place on both ground and platforms
     enemies = [];
-    for (let i = 0; i < 25; i++) {
+    
+    // Add banana enemies on ground (fewer than before)
+    for (let i = 0; i < 15; i++) {
         const enemyX = 600 + Math.random() * 3000; // Spread across factory
         const enemyY = 350 + Math.random() * 50;
         
@@ -2616,7 +2595,32 @@ function initBananaFactory() {
         });
     }
     
-    // Add banana enemies on platforms and conveyor belts
+    // Add banana enemies on platforms
+    platforms.forEach(platform => {
+        if (platform.type === 'platform' && platform.x < 3500) { // Only on regular platforms, not in boss area
+            // Add 1-2 enemies per platform
+            const enemyCount = Math.random() > 0.5 ? 1 : 2;
+            for (let i = 0; i < enemyCount; i++) {
+                const enemyX = platform.x + 20 + Math.random() * (platform.width - 40);
+                const enemyY = platform.y - assets.banana.height;
+                
+                enemies.push({
+                    x: enemyX,
+                    y: enemyY,
+                    width: assets.banana.width,
+                    height: assets.banana.height,
+                    velocityX: (Math.random() > 0.5 ? -1.5 : 1.5) * speedMultiplier,
+                    active: true,
+                    type: 'banana',
+                    throwTimer: 0,
+                    throwCooldown: 3000 + Math.random() * 2000,
+                    platformIndex: platforms.indexOf(platform) // Track which platform they're on
+                });
+            }
+        }
+    });
+    
+    // Add banana enemies on conveyor belts
     bananaFactory.conveyorBelts.forEach(belt => {
         if (Math.random() < 0.6) { // 60% chance for enemy on belt
             enemies.push({
@@ -2732,14 +2736,8 @@ function gameLoop(currentTime = performance.now()) {
         // Update explosions
         updateExplosions();
         
-        // Update collectibles
-        updateCollectibles();
-        
         // Draw platforms
         drawPlatforms();
-        
-        // Draw collectibles
-        drawCollectibles();
         
         // Draw obstacles
         drawObstacles();
