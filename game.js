@@ -2577,8 +2577,8 @@ function initBananaFactory() {
     // Replace regular enemies with banana enemies - place on both ground and platforms
     enemies = [];
     
-    // Add banana enemies on ground (fewer than before)
-    for (let i = 0; i < 15; i++) {
+    // Add banana enemies on ground (reduced by 20%: 15 -> 12)
+    for (let i = 0; i < 12; i++) {
         const enemyX = 600 + Math.random() * 3000; // Spread across factory
         const enemyY = 350 + Math.random() * 50;
         
@@ -2595,11 +2595,11 @@ function initBananaFactory() {
         });
     }
     
-    // Add banana enemies on platforms
+    // Add banana enemies on platforms (reduced frequency by 20%)
     platforms.forEach(platform => {
         if (platform.type === 'platform' && platform.x < 3500) { // Only on regular platforms, not in boss area
-            // Add 1-2 enemies per platform
-            const enemyCount = Math.random() > 0.5 ? 1 : 2;
+            // Reduced from 1-2 enemies to 0-1 enemies per platform (20% reduction)
+            const enemyCount = Math.random() > 0.6 ? 1 : 0; // 40% chance instead of 50%
             for (let i = 0; i < enemyCount; i++) {
                 const enemyX = platform.x + 20 + Math.random() * (platform.width - 40);
                 const enemyY = platform.y - assets.banana.height;
@@ -3307,6 +3307,11 @@ function drawPlatforms() {
         // Skip if off-screen
         if (screenX + platform.width < 0 || screenX > canvas.width) return;
         
+        // Debug logging for platforms near boss area
+        if (platform.x > 3000 && platform.x < 5000) {
+            console.log(`Platform at x=${platform.x}, type=${platform.type}, width=${platform.width}, screenX=${screenX}`);
+        }
+        
         // Skip drawing non-ground platforms in boss area for all levels
         if (currentLevel === 5) {
             // Level 5: Skip non-ground platforms in boss area (x > 3500) to clear boss fighting space
@@ -3320,27 +3325,18 @@ function drawPlatforms() {
         if (currentLevel === 5) {
             // ALWAYS draw platforms with maximum visibility for Level 5
             if (platform.type === 'ground') {
-                // Ground platforms - industrial factory floor
-                const groundGradient = ctx.createLinearGradient(screenX, platform.y, screenX, platform.y + platform.height);
-                groundGradient.addColorStop(0, '#5D6D7E');
-                groundGradient.addColorStop(0.5, '#4A5568');
-                groundGradient.addColorStop(1, '#2D3748');
-                ctx.fillStyle = groundGradient;
+                // Ground platforms - SUPER VISIBLE for debugging
+                ctx.fillStyle = '#FF0000'; // Bright red for maximum visibility
                 ctx.fillRect(screenX, platform.y, platform.width, platform.height);
                 
-                // Bright top edge for visibility
-                ctx.fillStyle = '#7F8C8D';
-                ctx.fillRect(screenX, platform.y, platform.width, 3);
+                // Bright yellow top edge
+                ctx.fillStyle = '#FFFF00';
+                ctx.fillRect(screenX, platform.y, platform.width, 5);
                 
-                // Grid pattern for industrial look
-                ctx.strokeStyle = '#85929E';
-                ctx.lineWidth = 1;
-                for (let x = 0; x < platform.width; x += 40) {
-                    ctx.beginPath();
-                    ctx.moveTo(screenX + x, platform.y);
-                    ctx.lineTo(screenX + x, platform.y + platform.height);
-                    ctx.stroke();
-                }
+                // Debug text
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = '16px Arial';
+                ctx.fillText(`Ground ${platform.x}`, screenX + 10, platform.y - 10);
             } else {
                 // Regular platforms - high visibility industrial design
                 const platformGradient = ctx.createLinearGradient(screenX, platform.y, screenX, platform.y + platform.height);
