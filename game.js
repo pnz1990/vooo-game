@@ -1027,15 +1027,23 @@ function updateBananaBoss() {
         }
     }
     
-    // Check collision with player
-    if (checkCollision(player, bananaBoss) && !player.invulnerable) {
-        if (player.velocityY > 0 && player.y < bananaBoss.y && !bananaBoss.invulnerable) {
-            // Player jumped on boss
+    // Check collision with player - use same logic as other bosses
+    if (bananaBoss.active && !player.invulnerable && !bananaBoss.invulnerable &&
+        player.x + 5 < bananaBoss.x + bananaBoss.width - 5 &&
+        player.x + player.width - 5 > bananaBoss.x + 5 &&
+        player.y + 5 < bananaBoss.y + bananaBoss.height - 5 &&
+        player.y + player.height - 5 > bananaBoss.y + 5
+    ) {
+        // Check if player is jumping on boss from above (same logic as other bosses)
+        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= bananaBoss.y + bananaBoss.height/3) {
+            // Player jumped on boss - hit boss
             bananaBoss.health--;
             bananaBoss.invulnerable = true;
-            bananaBoss.invulnerableTimer = 1000; // 1 second invulnerability
+            bananaBoss.invulnerableTimer = 1000; // 1 second invulnerability (same as before)
             
-            player.velocityY = -8; // Bounce player up
+            player.velocityY = player.jumpPower * 0.7; // Bounce (same as other bosses)
+            score += 200; // Same points as other bosses
+            updateScoreDisplay();
             
             if (bananaBoss.health <= 0) {
                 bananaBoss.active = false;
@@ -1047,7 +1055,7 @@ function updateBananaBoss() {
                 showMessage(`Banana Boss health: ${bananaBoss.health}`, 1000);
             }
         } else {
-            // Boss damages player
+            // Boss damages player (same as other bosses)
             player.isAlive = false;
         }
     }
@@ -1474,6 +1482,11 @@ function drawBananaBoss() {
     const screenX = bananaBoss.x - cameraX;
     if (screenX > -bananaBoss.width && screenX < canvas.width) {
         
+        // Skip drawing if boss is invulnerable and should blink (same as other bosses)
+        if (bananaBoss.invulnerable && Math.floor(bananaBoss.invulnerableTimer / 100) % 2 === 0) {
+            return; // Skip drawing for blink effect
+        }
+        
         // Try to use banana boss sprite first
         if (assets.banana.boss && assets.banana.boss.complete) {
             // Use banana boss sprite - no red flashing
@@ -1522,31 +1535,7 @@ function drawBananaBoss() {
             ctx.stroke();
         }
         
-        // Boss health bar
-        const healthBarWidth = 200;
-        const healthBarHeight = 20;
-        const healthBarX = screenX + bananaBoss.width/2 - healthBarWidth/2;
-        const healthBarY = bananaBoss.y - 40;
-        
-        // Background
-        ctx.fillStyle = '#FF0000';
-        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-        
-        // Health
-        ctx.fillStyle = '#00FF00';
-        const healthPercent = bananaBoss.health / bananaBoss.maxHealth;
-        ctx.fillRect(healthBarX, healthBarY, healthBarWidth * healthPercent, healthBarHeight);
-        
-        // Border
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-        
-        // Health text
-        ctx.fillStyle = '#000000';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(`Banana Boss: ${bananaBoss.health}/${bananaBoss.maxHealth}`, screenX + bananaBoss.width/2, healthBarY - 5);
+        // Health bar is now handled by the main drawBossHealthBar() function
     }
 }
 
@@ -2531,16 +2520,6 @@ function initBananaFactory() {
     bananaBoss.active = false; // Activated when player gets close
     bananaBoss.invulnerable = false;
     bananaBoss.invulnerableTimer = 0;
-    
-    // Debug: Log all ground platforms to check coverage
-    console.log("=== GROUND PLATFORM COVERAGE DEBUG ===");
-    platforms.forEach((platform, index) => {
-        if (platform.type === 'ground') {
-            console.log(`Ground Platform ${index}: x=${platform.x} to x=${platform.x + platform.width} (width=${platform.width})`);
-        }
-    });
-    console.log(`Boss at x=${bananaBoss.x}`);
-    console.log("=====================================");
     bananaBoss.lastAttack = 0;
     
     // Create banana enemies for Level 5
@@ -2778,7 +2757,8 @@ function gameLoop(currentTime = performance.now()) {
         drawExplosions();
         
         // Draw boss health bar if near boss
-        if (Math.abs(player.x - boss.x) < 500 && (boss.active || secondBoss.active)) {
+        if ((Math.abs(player.x - boss.x) < 500 && (boss.active || secondBoss.active)) ||
+            (currentLevel === 5 && bananaBoss.active && Math.abs(player.x - bananaBoss.x) < 500)) {
             drawBossHealthBar();
         }
         
@@ -2885,22 +2865,12 @@ function updatePlayer() {
             return;
         }
         
-        // Debug logging when player is near boss area
-        if (player.x > 4000 && platform.type === 'ground') {
-            console.log(`Checking collision with ground platform at x=${platform.x}-${platform.x + platform.width}, player at x=${player.x}, y=${player.y}`);
-        }
-        
         if (
             player.y + player.height > platform.y &&
             player.y < platform.y + platform.height &&
             player.x + player.width - 5 > platform.x &&
             player.x + 5 < platform.x + platform.width
         ) {
-            // Debug logging for successful collision
-            if (player.x > 4000 && platform.type === 'ground') {
-                console.log(`COLLISION DETECTED with platform at x=${platform.x}, player landing at y=${platform.y - player.height}`);
-            }
-            
             // Collision from above (landing on platform)
             if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
                 player.y = platform.y - player.height;
@@ -3327,11 +3297,6 @@ function drawPlatforms() {
         // Skip if off-screen
         if (screenX + platform.width < 0 || screenX > canvas.width) return;
         
-        // Debug logging for platforms near boss area
-        if (platform.x > 3000 && platform.x < 5000) {
-            console.log(`Platform at x=${platform.x}, type=${platform.type}, width=${platform.width}, screenX=${screenX}`);
-        }
-        
         // Skip drawing non-ground platforms in boss area for all levels
         if (currentLevel === 5) {
             // Level 5: Skip non-ground platforms in boss area (x > 3500) to clear boss fighting space
@@ -3345,18 +3310,27 @@ function drawPlatforms() {
         if (currentLevel === 5) {
             // ALWAYS draw platforms with maximum visibility for Level 5
             if (platform.type === 'ground') {
-                // Ground platforms - SUPER VISIBLE for debugging
-                ctx.fillStyle = '#FF0000'; // Bright red for maximum visibility
+                // Ground platforms - industrial factory floor
+                const groundGradient = ctx.createLinearGradient(screenX, platform.y, screenX, platform.y + platform.height);
+                groundGradient.addColorStop(0, '#5D6D7E');
+                groundGradient.addColorStop(0.5, '#4A5568');
+                groundGradient.addColorStop(1, '#2D3748');
+                ctx.fillStyle = groundGradient;
                 ctx.fillRect(screenX, platform.y, platform.width, platform.height);
                 
-                // Bright yellow top edge
-                ctx.fillStyle = '#FFFF00';
-                ctx.fillRect(screenX, platform.y, platform.width, 5);
+                // Bright top edge for visibility
+                ctx.fillStyle = '#7F8C8D';
+                ctx.fillRect(screenX, platform.y, platform.width, 3);
                 
-                // Debug text
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = '16px Arial';
-                ctx.fillText(`Ground ${platform.x}`, screenX + 10, platform.y - 10);
+                // Grid pattern for industrial look
+                ctx.strokeStyle = '#85929E';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < platform.width; x += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(screenX + x, platform.y);
+                    ctx.lineTo(screenX + x, platform.y + platform.height);
+                    ctx.stroke();
+                }
             } else {
                 // Regular platforms - high visibility industrial design
                 const platformGradient = ctx.createLinearGradient(screenX, platform.y, screenX, platform.y + platform.height);
@@ -3937,7 +3911,36 @@ function drawBoss() {
 
 // Draw boss health bar
 function drawBossHealthBar() {
-    // Only draw health bars if player is near boss area
+    // Level 5: Show banana boss health bar
+    if (currentLevel === 5 && bananaBoss.active && Math.abs(player.x - bananaBoss.x) < 500) {
+        const barWidth = 200;
+        const barHeight = 20;
+        const x = canvas.width / 2 - barWidth / 2;
+        const y = 30;
+        const healthPercentage = bananaBoss.health / bananaBoss.maxHealth;
+        
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(x, y, barWidth, barHeight);
+        
+        // Health
+        ctx.fillStyle = bananaBoss.invulnerable ? '#FFFF00' : '#FFD700'; // Gold for banana boss
+        ctx.fillRect(x, y, barWidth * healthPercentage, barHeight);
+        
+        // Border
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, barWidth, barHeight);
+        
+        // Text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('BANANA BOSS', canvas.width / 2, y - 5);
+        return;
+    }
+    
+    // Other levels: Only draw health bars if player is near boss area
     if (Math.abs(player.x - boss.x) < 500 && (boss.active || secondBoss.active)) {
         const barWidth = 200;
         const barHeight = 20;
