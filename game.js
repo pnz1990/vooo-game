@@ -2531,6 +2531,16 @@ function initBananaFactory() {
     bananaBoss.active = false; // Activated when player gets close
     bananaBoss.invulnerable = false;
     bananaBoss.invulnerableTimer = 0;
+    
+    // Debug: Log all ground platforms to check coverage
+    console.log("=== GROUND PLATFORM COVERAGE DEBUG ===");
+    platforms.forEach((platform, index) => {
+        if (platform.type === 'ground') {
+            console.log(`Ground Platform ${index}: x=${platform.x} to x=${platform.x + platform.width} (width=${platform.width})`);
+        }
+    });
+    console.log(`Boss at x=${bananaBoss.x}`);
+    console.log("=====================================");
     bananaBoss.lastAttack = 0;
     
     // Create banana enemies for Level 5
@@ -2864,8 +2874,8 @@ function updatePlayer() {
         player.x = 0;
     }
     
-    // Check if player is in boss area (x position > 7500)
-    const inBossArea = player.x > 7500;
+    // Check if player is in boss area (different for each level)
+    const inBossArea = currentLevel === 5 ? player.x > 4000 : player.x > 7500;
     
     // Check for collisions with platforms
     let onGround = false;
@@ -2875,12 +2885,22 @@ function updatePlayer() {
             return;
         }
         
+        // Debug logging when player is near boss area
+        if (player.x > 4000 && platform.type === 'ground') {
+            console.log(`Checking collision with ground platform at x=${platform.x}-${platform.x + platform.width}, player at x=${player.x}, y=${player.y}`);
+        }
+        
         if (
             player.y + player.height > platform.y &&
             player.y < platform.y + platform.height &&
             player.x + player.width - 5 > platform.x &&
             player.x + 5 < platform.x + platform.width
         ) {
+            // Debug logging for successful collision
+            if (player.x > 4000 && platform.type === 'ground') {
+                console.log(`COLLISION DETECTED with platform at x=${platform.x}, player landing at y=${platform.y - player.height}`);
+            }
+            
             // Collision from above (landing on platform)
             if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
                 player.y = platform.y - player.height;
