@@ -1035,9 +1035,9 @@ function updateBananaBoss() {
         bananaBoss.velocityX *= -1;
     }
     
-    // Update invulnerability
+    // Update invulnerability (frame-based, matching regular bosses)
     if (bananaBoss.invulnerable) {
-        bananaBoss.invulnerableTimer -= 16;
+        bananaBoss.invulnerableTimer--;
         if (bananaBoss.invulnerableTimer <= 0) {
             bananaBoss.invulnerable = false;
         }
@@ -1050,14 +1050,19 @@ function updateBananaBoss() {
         player.y + 5 < bananaBoss.y + bananaBoss.height - 5 &&
         player.y + player.height - 5 > bananaBoss.y + 5
     ) {
-        // Check if player is jumping on boss from above (generous top-half zone)
-        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= bananaBoss.y + bananaBoss.height/2) {
+        // Stomp detection: player is falling AND their center is above the boss's center
+        const playerCenterY = player.y + player.height / 2;
+        const bossCenterY = bananaBoss.y + bananaBoss.height / 2;
+        
+        if (player.velocityY > 0 && playerCenterY < bossCenterY) {
             // Player jumped on boss - hit boss
             bananaBoss.health--;
             bananaBoss.invulnerable = true;
-            bananaBoss.invulnerableTimer = 1000; // 1 second invulnerability
+            bananaBoss.invulnerableTimer = 30; // Match regular bosses (frame-based)
             
             player.velocityY = player.jumpPower * 0.8; // Strong bounce off boss
+            player.invulnerable = true; // Brief player invulnerability after stomp
+            player.invulnerableTimer = 45;
             score += 200;
             updateScoreDisplay();
             
@@ -1544,7 +1549,7 @@ function drawBananaBoss() {
     if (screenX > -bananaBoss.width && screenX < canvas.width) {
         
         // Skip drawing if boss is invulnerable and should blink (same as other bosses)
-        if (bananaBoss.invulnerable && Math.floor(bananaBoss.invulnerableTimer / 100) % 2 === 0) {
+        if (bananaBoss.invulnerable && Math.floor(bananaBoss.invulnerableTimer / 4) % 2 === 0) {
             return; // Skip drawing for blink effect
         }
         
@@ -2954,27 +2959,38 @@ function updatePlayer() {
             }
             // Collision from sides or below - push player away
             else {
-                // Find the shortest direction to push out
-                const fromLeft = player.x + player.width - obstacle.x;
-                const fromRight = obstacle.x + obstacle.width - player.x;
-                const fromTop = player.y + player.height - obstacle.y;
-                const fromBottom = obstacle.y + obstacle.height - player.y;
-                
-                const min = Math.min(fromLeft, fromRight, fromTop, fromBottom);
-                
-                if (min === fromLeft) {
-                    player.x = obstacle.x - player.width;
-                } else if (min === fromRight) {
-                    player.x = obstacle.x + obstacle.width;
-                } else if (min === fromTop) {
-                    player.y = Math.round(obstacle.y - player.height);
-                    player.velocityY = 0;
-                    player.jumping = false;
-                    assets.vooo.isJumping = false;
-                    onGround = true;
-                } else if (min === fromBottom) {
-                    player.y = obstacle.y + obstacle.height;
-                    player.velocityY = 0;
+                if (onGround) {
+                    // When on ground, only push horizontally to avoid vertical oscillation
+                    const fromLeft = player.x + player.width - obstacle.x;
+                    const fromRight = obstacle.x + obstacle.width - player.x;
+                    if (fromLeft < fromRight) {
+                        player.x = obstacle.x - player.width;
+                    } else {
+                        player.x = obstacle.x + obstacle.width;
+                    }
+                } else {
+                    // Full push-out when in air
+                    const fromLeft = player.x + player.width - obstacle.x;
+                    const fromRight = obstacle.x + obstacle.width - player.x;
+                    const fromTop = player.y + player.height - obstacle.y;
+                    const fromBottom = obstacle.y + obstacle.height - player.y;
+                    
+                    const min = Math.min(fromLeft, fromRight, fromTop, fromBottom);
+                    
+                    if (min === fromLeft) {
+                        player.x = obstacle.x - player.width;
+                    } else if (min === fromRight) {
+                        player.x = obstacle.x + obstacle.width;
+                    } else if (min === fromTop) {
+                        player.y = Math.round(obstacle.y - player.height);
+                        player.velocityY = 0;
+                        player.jumping = false;
+                        assets.vooo.isJumping = false;
+                        onGround = true;
+                    } else if (min === fromBottom) {
+                        player.y = obstacle.y + obstacle.height;
+                        player.velocityY = 0;
+                    }
                 }
             }
         }
