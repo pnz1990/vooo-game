@@ -260,7 +260,6 @@ function handleJumpInput() {
     if (!player.jumping) {
         player.velocityY = player.jumpPower * speedMultiplier;
         player.jumping = true;
-        player.onGround = false; // Must clear immediately so gravity applies next frame
         player.canDoubleJump = doubleJumpEnabled;
         player.onHook = null; // Release from swinging platform
     }
@@ -1099,12 +1098,11 @@ function checkBananaFactoryCollisions() {
             player.x + 5 < belt.x + belt.width &&
             player.velocityY >= 0 &&
             player.y + player.height - player.velocityY <= belt.y + 10) {
-            player.y = belt.y - player.height;
+            player.y = Math.round(belt.y - player.height);
             player.velocityY = 0;
             player.jumping = false;
             player.doubleJumping = false;
             player.canDoubleJump = doubleJumpEnabled;
-            player.onGround = true;
             
             // Move player with conveyor
             player.x += belt.direction * belt.speed;
@@ -1143,7 +1141,7 @@ function checkBananaFactoryCollisions() {
     // Check collapsing platform collisions
     bananaFactory.collapsingPlatforms.forEach(platform => {
         if (!platform.collapsed && checkCollision(player, platform) && player.velocityY >= 0) {
-            player.y = platform.y - player.height;
+            player.y = Math.round(platform.y - player.height);
             player.velocityY = 0;
             player.jumping = false;
             player.doubleJumping = false;
@@ -1183,7 +1181,7 @@ function checkBananaFactoryCollisions() {
             } else {
                 // Move player with the platform
                 player.x += deltaX;
-                player.y = hookY - player.height;
+                player.y = Math.round(hookY - player.height);
                 player.velocityY = 0;
                 player.jumping = false;
                 player.doubleJumping = false;
@@ -1192,7 +1190,7 @@ function checkBananaFactoryCollisions() {
         } else if (player.velocityY > 0 && checkCollision(player, hookPlatform)) {
             // Landing on hook from above - check that player was above the platform last frame
             if (player.y + player.height - player.velocityY <= hookY + 10) {
-                player.y = hookY - player.height;
+                player.y = Math.round(hookY - player.height);
                 player.velocityY = 0;
                 player.jumping = false;
                 player.doubleJumping = false;
@@ -2868,13 +2866,8 @@ function updatePlayer() {
     // Handle jumping and double jumping - REMOVED from here to avoid duplicate jumps
     // Jump handling is now only in the keydown event listener and mobile touch events
     
-    // Apply gravity only if not resting on ground (prevents micro-bounce oscillation)
-    if (!player.onGround) {
-        player.velocityY += gravity;
-    } else {
-        // On ground: apply small downward test velocity to detect when walking off edges
-        player.velocityY = 1;
-    }
+    // Apply gravity
+    player.velocityY += gravity;
     
     // Update player position
     player.x += player.velocityX;
@@ -2886,7 +2879,6 @@ function updatePlayer() {
     }
     
     // Check if player is in boss area (different for each level)
-    const bossAreaThreshold = currentLevel === 5 ? 3500 : 7400;
     const inBossArea = currentLevel === 5 ? player.x > 3500 : player.x > 7400;
     
     // Check for collisions with platforms
@@ -2904,8 +2896,8 @@ function updatePlayer() {
             player.x + 5 < platform.x + platform.width
         ) {
             // Collision from above (landing on platform)
-            if (player.velocityY >= 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
-                player.y = platform.y - player.height;
+            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
+                player.y = Math.round(platform.y - player.height);
                 player.velocityY = 0;
                 player.jumping = false;
                 player.doubleJumping = false;
@@ -2929,7 +2921,7 @@ function updatePlayer() {
         }
     });
     
-    // Update onGround state for next frame's gravity check
+    // Update onGround state
     player.onGround = onGround;
     
     // Check for collisions with obstacles
@@ -2949,7 +2941,7 @@ function updatePlayer() {
             
             // Collision from above
             if (player.velocityY > 0 && player.y + player.height - player.velocityY <= obstacle.y) {
-                player.y = obstacle.y - player.height;
+                player.y = Math.round(obstacle.y - player.height);
                 player.velocityY = 0;
                 player.jumping = false;
                 assets.vooo.isJumping = false;
@@ -2970,7 +2962,7 @@ function updatePlayer() {
                 } else if (min === fromRight) {
                     player.x = obstacle.x + obstacle.width;
                 } else if (min === fromTop) {
-                    player.y = obstacle.y - player.height;
+                    player.y = Math.round(obstacle.y - player.height);
                     player.velocityY = 0;
                     player.jumping = false;
                     assets.vooo.isJumping = false;
