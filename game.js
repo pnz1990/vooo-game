@@ -260,6 +260,7 @@ function handleJumpInput() {
     if (!player.jumping) {
         player.velocityY = player.jumpPower * speedMultiplier;
         player.jumping = true;
+        player.onGround = false; // Must clear immediately so gravity applies next frame
         player.canDoubleJump = doubleJumpEnabled;
         player.onHook = null; // Release from swinging platform
     }
