@@ -261,6 +261,7 @@ function handleJumpInput() {
         player.velocityY = player.jumpPower * speedMultiplier;
         player.jumping = true;
         player.canDoubleJump = doubleJumpEnabled;
+        player.onHook = null; // Release from swinging platform
     }
     // Double jump when in the air and double jump is available
     else if (player.canDoubleJump && !player.doubleJumping) {
@@ -581,6 +582,7 @@ const player = {
     jumping: false,
     doubleJumping: false,
     canDoubleJump: false,
+    onGround: false,
     velocityX: 0,
     velocityY: 0,
     jumpPower: -11.5 * speedMultiplier, // Base jump power adjusted by speed multiplier
@@ -874,8 +876,9 @@ function drawExplosions() {
 function updateBananaFactory() {
     const currentTime = performance.now();
     
-    // Update conveyor belts and barrels
-    bananaFactory.bananaBarrels.forEach((barrel, index) => {
+    // Update conveyor belts and barrels (iterate backward for safe removal)
+    for (let index = bananaFactory.bananaBarrels.length - 1; index >= 0; index--) {
+        const barrel = bananaFactory.bananaBarrels[index];
         if (barrel.onConveyor) {
             barrel.x += barrel.velocityX;
             
@@ -884,7 +887,7 @@ function updateBananaFactory() {
                 bananaFactory.bananaBarrels.splice(index, 1);
             }
         }
-    });
+    }
     
     // Update rotating slicers
     bananaFactory.rotatingSlicers.forEach(slicer => {
@@ -942,8 +945,9 @@ function updateBananaFactory() {
         }
     });
     
-    // Update banana missiles
-    bananaFactory.missiles.forEach((missile, index) => {
+    // Update banana missiles (iterate backward for safe removal)
+    for (let index = bananaFactory.missiles.length - 1; index >= 0; index--) {
+        const missile = bananaFactory.missiles[index];
         missile.x += missile.velocityX;
         missile.y += missile.velocityY;
         missile.velocityY += 0.3; // Gravity effect
@@ -952,10 +956,11 @@ function updateBananaFactory() {
         if (missile.y > canvas.height - 40 || missile.x < cameraX - 100 || missile.x > cameraX + canvas.width + 100) {
             bananaFactory.missiles.splice(index, 1);
         }
-    });
+    }
     
-    // Update banana peel projectiles to prevent trails
-    bananaFactory.bananaPeels.forEach((peel, index) => {
+    // Update banana peel projectiles (iterate backward for safe removal)
+    for (let index = bananaFactory.bananaPeels.length - 1; index >= 0; index--) {
+        const peel = bananaFactory.bananaPeels[index];
         if (peel.velocityX !== undefined) { // Only update projectile peels, not static ones
             peel.x += peel.velocityX;
             peel.y += peel.velocityY;
@@ -968,7 +973,7 @@ function updateBananaFactory() {
                 bananaFactory.bananaPeels.splice(index, 1);
             }
         }
-    });
+    }
 }
 
 function updateBananaBoss() {
@@ -1019,6 +1024,17 @@ function updateBananaBoss() {
         bananaBoss.onGround = true;
     }
     
+    // Keep banana boss within boss arena boundaries
+    const bossMinX = 4000;
+    const bossMaxX = 5100;
+    if (bananaBoss.x < bossMinX) {
+        bananaBoss.x = bossMinX;
+        bananaBoss.velocityX *= -1;
+    } else if (bananaBoss.x + bananaBoss.width > bossMaxX) {
+        bananaBoss.x = bossMaxX - bananaBoss.width;
+        bananaBoss.velocityX *= -1;
+    }
+    
     // Update invulnerability
     if (bananaBoss.invulnerable) {
         bananaBoss.invulnerableTimer -= 16;
@@ -1027,23 +1043,27 @@ function updateBananaBoss() {
         }
     }
     
-    // Check collision with player - use same logic as other bosses
+    // Check collision with player - improved stomp detection and bounce
     if (bananaBoss.active && !player.invulnerable && !bananaBoss.invulnerable &&
         player.x + 5 < bananaBoss.x + bananaBoss.width - 5 &&
         player.x + player.width - 5 > bananaBoss.x + 5 &&
         player.y + 5 < bananaBoss.y + bananaBoss.height - 5 &&
         player.y + player.height - 5 > bananaBoss.y + 5
     ) {
-        // Check if player is jumping on boss from above (same logic as other bosses)
-        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= bananaBoss.y + bananaBoss.height/3) {
+        // Check if player is jumping on boss from above (generous top-half zone)
+        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= bananaBoss.y + bananaBoss.height/2) {
             // Player jumped on boss - hit boss
             bananaBoss.health--;
             bananaBoss.invulnerable = true;
-            bananaBoss.invulnerableTimer = 1000; // 1 second invulnerability (same as before)
+            bananaBoss.invulnerableTimer = 1000; // 1 second invulnerability
             
-            player.velocityY = player.jumpPower * 0.7; // Bounce (same as other bosses)
-            score += 200; // Same points as other bosses
+            player.velocityY = player.jumpPower * 0.8; // Strong bounce off boss
+            score += 200;
             updateScoreDisplay();
+            
+            // Knock boss back away from player on hit
+            bananaBoss.velocityX = (player.x < bananaBoss.x ? 3 : -3);
+            bananaBoss.velocityY = -4; // Small upward knockback
             
             if (bananaBoss.health <= 0) {
                 bananaBoss.active = false;
@@ -1055,7 +1075,7 @@ function updateBananaBoss() {
                 showMessage(`Banana Boss health: ${bananaBoss.health}`, 1000);
             }
         } else {
-            // Boss damages player (same as other bosses)
+            // Boss damages player
             player.isAlive = false;
         }
     }
@@ -1072,12 +1092,18 @@ function checkCollision(rect1, rect2) {
 function checkBananaFactoryCollisions() {
     // Check conveyor belt collisions
     bananaFactory.conveyorBelts.forEach(belt => {
-        if (checkCollision(player, belt) && player.velocityY >= 0) {
+        if (player.y + player.height > belt.y &&
+            player.y < belt.y + belt.height &&
+            player.x + player.width - 5 > belt.x &&
+            player.x + 5 < belt.x + belt.width &&
+            player.velocityY >= 0 &&
+            player.y + player.height - player.velocityY <= belt.y + 10) {
             player.y = belt.y - player.height;
             player.velocityY = 0;
             player.jumping = false;
             player.doubleJumping = false;
             player.canDoubleJump = doubleJumpEnabled;
+            player.onGround = true;
             
             // Move player with conveyor
             player.x += belt.direction * belt.speed;
@@ -1085,13 +1111,17 @@ function checkBananaFactoryCollisions() {
     });
     
     // Check syrup pool collisions (sticky surfaces)
+    let inSyrup = false;
     bananaFactory.syrupPools.forEach(pool => {
         if (checkCollision(player, pool)) {
-            player.moveSpeed = GAME_CONFIG.PLAYER.BASE_SPEED * speedMultiplier * GAME_CONFIG.LEVEL_5.SYRUP_SLOWDOWN;
-        } else {
-            player.moveSpeed = GAME_CONFIG.PLAYER.BASE_SPEED * speedMultiplier;
+            inSyrup = true;
         }
     });
+    if (inSyrup) {
+        player.moveSpeed = GAME_CONFIG.PLAYER.BASE_SPEED * speedMultiplier * GAME_CONFIG.LEVEL_5.SYRUP_SLOWDOWN;
+    } else {
+        player.moveSpeed = GAME_CONFIG.PLAYER.BASE_SPEED * speedMultiplier;
+    }
     
     // Check banana peel collisions (slippery surfaces)
     bananaFactory.bananaPeels.forEach(peel => {
@@ -1117,6 +1147,7 @@ function checkBananaFactoryCollisions() {
             player.jumping = false;
             player.doubleJumping = false;
             player.canDoubleJump = doubleJumpEnabled;
+            player.onGround = true;
             
             // Start collapse timer
             if (platform.stable) {
@@ -1126,18 +1157,48 @@ function checkBananaFactoryCollisions() {
         }
     });
     
-    // Check factory hook collisions (moving platforms)
+    // Check factory hook collisions (moving platforms) - player must land from above and move with platform
     bananaFactory.factoryHooks.forEach(hook => {
         const hookX = hook.x + Math.sin(hook.swingAngle) * 100;
         const hookY = hook.y + Math.cos(hook.swingAngle) * 50;
         const hookPlatform = { x: hookX, y: hookY, width: hook.width, height: hook.height };
         
-        if (checkCollision(player, hookPlatform) && player.velocityY >= 0) {
-            player.y = hookY - player.height;
-            player.velocityY = 0;
-            player.jumping = false;
-            player.doubleJumping = false;
-            player.canDoubleJump = doubleJumpEnabled;
+        // Calculate platform movement delta for this frame
+        const prevAngle = hook.swingAngle - hook.swingSpeed;
+        const prevHookX = hook.x + Math.sin(prevAngle) * 100;
+        const prevHookY = hook.y + Math.cos(prevAngle) * 50;
+        const deltaX = hookX - prevHookX;
+        const deltaY = hookY - prevHookY;
+        
+        // Check if player is currently riding this hook
+        const isOnHook = player.onHook === hook;
+        
+        if (isOnHook) {
+            // Player is already on this hook - keep them on it
+            const playerCenterX = player.x + player.width / 2;
+            // Check if player walked off the platform
+            if (playerCenterX < hookX || playerCenterX > hookX + hook.width) {
+                player.onHook = null;
+            } else {
+                // Move player with the platform
+                player.x += deltaX;
+                player.y = hookY - player.height;
+                player.velocityY = 0;
+                player.jumping = false;
+                player.doubleJumping = false;
+                player.onGround = true;
+            }
+        } else if (player.velocityY > 0 && checkCollision(player, hookPlatform)) {
+            // Landing on hook from above - check that player was above the platform last frame
+            if (player.y + player.height - player.velocityY <= hookY + 10) {
+                player.y = hookY - player.height;
+                player.velocityY = 0;
+                player.jumping = false;
+                player.doubleJumping = false;
+                player.canDoubleJump = doubleJumpEnabled;
+                player.onGround = true;
+                player.onHook = hook;
+            }
         }
     });
     
@@ -1148,13 +1209,14 @@ function checkBananaFactoryCollisions() {
         }
     });
     
-    // Check banana missile collisions
-    bananaFactory.missiles.forEach((missile, index) => {
+    // Check banana missile collisions (iterate backward for safe removal)
+    for (let index = bananaFactory.missiles.length - 1; index >= 0; index--) {
+        const missile = bananaFactory.missiles[index];
         if (checkCollision(player, missile)) {
             player.isAlive = false;
             bananaFactory.missiles.splice(index, 1);
         }
-    });
+    }
 }
 
 function throwBananaPeel(enemy) {
@@ -2042,6 +2104,8 @@ function initLevel() {
     player.jumping = false;
     player.doubleJumping = false;
     player.canDoubleJump = false;
+    player.onGround = false;
+    player.onHook = null;
     player.isAlive = true;
     player.invulnerable = false;
     player.invulnerableTimer = 0;
@@ -2196,7 +2260,8 @@ function initLevel() {
         }
     }
     
-    // Add platforms - more of them and more varied
+    // Add platforms - more of them and more varied (NOT for Level 5 which has explicit layout)
+    if (currentLevel !== 5) {
     for (let i = 0; i < 40; i++) {
         const platformWidth = Math.random() * 200 + 100;
         const platformX = 500 + i * 200 + Math.random() * 100;
@@ -2231,6 +2296,7 @@ function initLevel() {
             }
         }
     }
+    } // end of currentLevel !== 5 check for random platforms
     
     // Add a special platform for the boss battle
     // Removed the special platform for boss battle to make it a clean arena
@@ -2522,48 +2588,7 @@ function initBananaFactory() {
     bananaBoss.invulnerableTimer = 0;
     bananaBoss.lastAttack = 0;
     
-    // Create banana enemies for Level 5
-    enemies = []; // Clear existing enemies
-    const bananaEnemyCount = 20; // Reduced count for better spacing
-    
-    for (let i = 0; i < bananaEnemyCount; i++) {
-        const enemyX = 700 + i * 140 + Math.random() * 60; // Better spacing
-        
-        // Skip if too close to boss area - increased buffer zone
-        if (enemyX >= 4000) continue; // Increased from 3600 to 4000
-        
-        // Position on ground or platforms
-        let enemyY = canvas.height - 40 - 30; // Default ground position
-        let enemyWidth = 30;
-        let enemyHeight = 30;
-        
-        // Sometimes place on platforms
-        if (Math.random() < 0.3) {
-            const nearbyPlatforms = platforms.filter(p => 
-                Math.abs(p.x + p.width/2 - enemyX) < 100 && 
-                p.type === 'platform'
-            );
-            
-            if (nearbyPlatforms.length > 0) {
-                const platform = nearbyPlatforms[0];
-                enemyY = platform.y - enemyHeight;
-            }
-        }
-        
-        enemies.push({
-            x: enemyX,
-            y: enemyY,
-            width: enemyWidth,
-            height: enemyHeight,
-            velocityX: (Math.random() > 0.5 ? -1.2 : 1.2) * speedMultiplier,
-            active: true,
-            type: 'banana',
-            lastThrow: 0,
-            throwCooldown: 2000 + Math.random() * 1000 // 2-3 seconds between throws
-        });
-    }
-    
-    // Replace regular enemies with banana enemies - place on both ground and platforms
+    // Create banana enemies for Level 5 - place on both ground and platforms
     enemies = [];
     
     // Add banana enemies on ground (reduced by 20%: 15 -> 12)
@@ -2842,8 +2867,13 @@ function updatePlayer() {
     // Handle jumping and double jumping - REMOVED from here to avoid duplicate jumps
     // Jump handling is now only in the keydown event listener and mobile touch events
     
-    // Apply gravity
-    player.velocityY += gravity;
+    // Apply gravity only if not resting on ground (prevents micro-bounce oscillation)
+    if (!player.onGround) {
+        player.velocityY += gravity;
+    } else {
+        // On ground: apply small downward test velocity to detect when walking off edges
+        player.velocityY = 1;
+    }
     
     // Update player position
     player.x += player.velocityX;
@@ -2855,7 +2885,8 @@ function updatePlayer() {
     }
     
     // Check if player is in boss area (different for each level)
-    const inBossArea = currentLevel === 5 ? player.x > 4000 : player.x > 7500;
+    const bossAreaThreshold = currentLevel === 5 ? 3500 : 7400;
+    const inBossArea = currentLevel === 5 ? player.x > 3500 : player.x > 7400;
     
     // Check for collisions with platforms
     let onGround = false;
@@ -2872,7 +2903,7 @@ function updatePlayer() {
             player.x + 5 < platform.x + platform.width
         ) {
             // Collision from above (landing on platform)
-            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
+            if (player.velocityY >= 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
                 player.y = platform.y - player.height;
                 player.velocityY = 0;
                 player.jumping = false;
@@ -2896,6 +2927,9 @@ function updatePlayer() {
             }
         }
     });
+    
+    // Update onGround state for next frame's gravity check
+    player.onGround = onGround;
     
     // Check for collisions with obstacles
     obstacles.forEach(obstacle => {
@@ -2939,6 +2973,7 @@ function updatePlayer() {
                     player.velocityY = 0;
                     player.jumping = false;
                     assets.vooo.isJumping = false;
+                    onGround = true;
                 } else if (min === fromBottom) {
                     player.y = obstacle.y + obstacle.height;
                     player.velocityY = 0;
@@ -2981,12 +3016,12 @@ function updatePlayer() {
         player.y + player.height - 5 > boss.y + 5
     ) {
         // Check if player is jumping on boss from above
-        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= boss.y + boss.height/3) {
+        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= boss.y + boss.height/2) {
             // Hit boss
             boss.hits++;
             boss.invulnerable = true;
             boss.invulnerableTimer = 30;
-            player.velocityY = player.jumpPower * 0.7; // Bounce
+            player.velocityY = player.jumpPower * 0.8; // Bounce off boss
             score += 200;
             updateScoreDisplay();
             
@@ -2998,14 +3033,8 @@ function updatePlayer() {
                 updateScoreDisplay();
             }
         } else {
-            // Player gets hit by boss
+            // Player gets hit by boss - lose a life (consistent across all levels)
             player.isAlive = false;
-            
-            // If it's a cherry boss (level 3 or 4), defeat player immediately regardless of lives
-            if (currentLevel === 3 || currentLevel === 4) {
-                lives = 0; // Set lives to 0 to trigger game over
-                updateLivesDisplay();
-            }
         }
     }
     
@@ -3017,12 +3046,12 @@ function updatePlayer() {
         player.y + player.height - 5 > secondBoss.y + 5
     ) {
         // Check if player is jumping on second boss from above
-        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= secondBoss.y + secondBoss.height/3) {
+        if (player.velocityY > 0 && player.y + player.height - player.velocityY <= secondBoss.y + secondBoss.height/2) {
             // Hit second boss
             secondBoss.hits++;
             secondBoss.invulnerable = true;
             secondBoss.invulnerableTimer = 30;
-            player.velocityY = player.jumpPower * 0.7; // Bounce
+            player.velocityY = player.jumpPower * 0.8; // Bounce
             score += 200;
             updateScoreDisplay();
             
@@ -3155,7 +3184,7 @@ function updateEnemies() {
             player.y + player.height - 5 > enemy.y + 5
         ) {
             // Check if player is jumping on enemy from above
-            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= enemy.y + enemy.height/4) {
+            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= enemy.y + enemy.height/3) {
                 // Defeat enemy
                 enemy.active = false;
                 player.velocityY = player.jumpPower * 0.7; // Bounce
@@ -3609,20 +3638,6 @@ function drawPlayer() {
     }
     ctx.restore();
     
-    // Draw double jump indicator if available
-    if (player.jumping && player.canDoubleJump) {
-        // Draw a more visible glow around the player
-        ctx.save();
-        ctx.globalAlpha = 0.7;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(screenX + player.width/2, player.y + player.height/2, 
-                player.width * 0.7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-        ctx.restore();
-    }
-    
     // Debug info - only shown if debugMode is true
     if (debugMode) {
         ctx.fillStyle = '#FFFFFF';
@@ -3659,7 +3674,6 @@ function drawEnemies() {
                 // Less strict validation for banana enemies - just check if complete
                 enemySprite = assets.banana.enemies;
                 useSprite = true;
-                console.log('Using banana enemy sprite');
             } else if (enemy.type === 'strawberry' && assets.strawberry.img && assets.strawberry.img.complete && assets.strawberry.img.naturalWidth > 0) {
                 enemySprite = assets.strawberry.img;
                 useSprite = true;
@@ -3685,9 +3699,6 @@ function drawEnemies() {
                 ctx.restore();
             } else {
                 // Fallback to professional-looking shapes if image fails or isn't loaded
-                if (enemy.type === 'banana') {
-                    console.log('Using banana enemy fallback rendering');
-                }
                 drawEnemyFallback(screenX, enemy.y, enemy.width, enemy.height, enemy.type, enemy.velocityX < 0);
             }
         } catch (e) {
@@ -4010,6 +4021,8 @@ function resetPlayerAfterDeath() {
     player.jumping = false;
     player.doubleJumping = false;
     player.canDoubleJump = false;
+    player.onGround = false;
+    player.onHook = null;
     
     if (currentLevel === 5) {
         // Level 5: Spawn at death location (no checkpoint system)
