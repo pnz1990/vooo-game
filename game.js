@@ -2866,8 +2866,13 @@ function updatePlayer() {
     // Handle jumping and double jumping - REMOVED from here to avoid duplicate jumps
     // Jump handling is now only in the keydown event listener and mobile touch events
     
-    // Apply gravity
-    player.velocityY += gravity;
+    // Apply gravity when airborne; use micro-velocity when grounded to maintain
+    // contact detection without visible movement (prevents glitchy oscillation)
+    if (!player.onGround || player.jumping) {
+        player.velocityY += gravity;
+    } else {
+        player.velocityY = 0.01;
+    }
     
     // Update player position
     player.x += player.velocityX;
