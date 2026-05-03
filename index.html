@@ -229,11 +229,19 @@
         <p>Defeat enemies by jumping on them. Find and defeat the boss to win!</p>
     </div>
     
-    <div id="version" style="color: #555; font-size: 0.7rem; margin-top: 8px; font-family: monospace;">v625e0ed</div>
+    <div id="version" style="color: #555; font-size: 0.7rem; margin-top: 8px; font-family: monospace;"></div>
     
     <!-- Add a version parameter to prevent caching -->
-    <script src="game.js?v=625e0ed"></script>
-    <script src="js/explosion.js?v=625e0ed"></script>
+    <script src="game.js?v=14861ec"></script>
+    <script src="js/explosion.js?v=14861ec"></script>
+    
+    <script>
+        // Fetch commit hash from GitHub API to display accurate version
+        fetch('https://api.github.com/repos/pnz1990/vooo-game/commits/main', {headers: {Accept: 'application/vnd.github.v3.sha'}})
+            .then(r => r.text())
+            .then(sha => document.getElementById('version').textContent = 'v' + sha.substring(0, 7))
+            .catch(() => document.getElementById('version').textContent = 'v14861ec');
+    </script>
     
     <script>
         // Mobile-friendly reload function
