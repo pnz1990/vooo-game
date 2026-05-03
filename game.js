@@ -2871,17 +2871,8 @@ function updatePlayer() {
     // Handle jumping and double jumping - REMOVED from here to avoid duplicate jumps
     // Jump handling is now only in the keydown event listener and mobile touch events
     
-    // Apply gravity when airborne; use micro-velocity when grounded to maintain
-    // contact detection without visible movement (prevents glitchy oscillation)
-    if (!player.onGround || player.jumping) {
-        player.velocityY += gravity;
-    } else {
-        player.velocityY = 0.01;
-    }
-    
-    // Update player position
+    // Horizontal movement always applies
     player.x += player.velocityX;
-    player.y += player.velocityY;
     
     // Keep player within level bounds
     if (player.x < 0) {
@@ -2891,47 +2882,148 @@ function updatePlayer() {
     // Check if player is in boss area (different for each level)
     const inBossArea = currentLevel === 5 ? player.x > 3500 : player.x > 7400;
     
-    // Check for collisions with platforms
     let onGround = false;
-    platforms.forEach(platform => {
-        // Skip ALL non-ground platforms in boss area
-        if (inBossArea && platform.type !== 'ground') {
-            return;
-        }
-        
-        if (
-            player.y + player.height > platform.y &&
-            player.y < platform.y + platform.height &&
-            player.x + player.width - 5 > platform.x &&
-            player.x + 5 < platform.x + platform.width
-        ) {
-            // Collision from above (landing on platform)
-            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
-                player.y = Math.round(platform.y - player.height);
-                player.velocityY = 0;
-                player.jumping = false;
-                player.doubleJumping = false;
-                player.canDoubleJump = false; // Reset double jump when landing
-                assets.vooo.isJumping = false;
-                onGround = true;
-            }
-            // Collision from below (hitting platform from underneath)
-            else if (player.velocityY < 0 && player.y >= platform.y + platform.height) {
-                player.y = platform.y + platform.height;
-                player.velocityY = 0;
-            }
-            // Collision from left
-            else if (player.velocityX > 0 && player.x + player.width - player.velocityX <= platform.x) {
-                player.x = platform.x - player.width;
-            }
-            // Collision from right
-            else if (player.velocityX < 0 && player.x - player.velocityX >= platform.x + platform.width) {
-                player.x = platform.x + platform.width;
-            }
-        }
-    });
     
-    // Update onGround state
+    if (player.onGround && !player.jumping) {
+        // === GROUNDED STATE: Y position is frozen, no gravity ===
+        player.velocityY = 0;
+        
+        // Check if player is still supported by a platform after horizontal movement
+        let supported = false;
+        platforms.forEach(platform => {
+            if (inBossArea && platform.type !== 'ground') return;
+            if (player.x + player.width - 5 > platform.x &&
+                player.x + 5 < platform.x + platform.width &&
+                Math.abs(player.y + player.height - platform.y) < 2) {
+                supported = true;
+            }
+        });
+        // Also check obstacles for support (standing on rocks)
+        obstacles.forEach(obstacle => {
+            if (obstacle.type === 'lava') return;
+            if (player.x + player.width - 5 > obstacle.x &&
+                player.x + 5 < obstacle.x + obstacle.width &&
+                Math.abs(player.y + player.height - obstacle.y) < 2) {
+                supported = true;
+            }
+        });
+        
+        onGround = supported;
+        
+        // Horizontal-only collision with obstacles while grounded
+        obstacles.forEach(obstacle => {
+            if (obstacle.type === 'lava') {
+                // Lava check even when grounded
+                if (player.y + player.height > obstacle.y - 5 &&
+                    player.x + player.width - 5 > obstacle.x &&
+                    player.x + 5 < obstacle.x + obstacle.width) {
+                    player.isAlive = false;
+                }
+                return;
+            }
+            if (player.y + player.height > obstacle.y + 5 &&
+                player.y < obstacle.y + obstacle.height - 5 &&
+                player.x + player.width - 5 > obstacle.x &&
+                player.x + 5 < obstacle.x + obstacle.width) {
+                // Only push horizontally
+                const fromLeft = player.x + player.width - obstacle.x;
+                const fromRight = obstacle.x + obstacle.width - player.x;
+                if (fromLeft < fromRight) {
+                    player.x = obstacle.x - player.width;
+                } else {
+                    player.x = obstacle.x + obstacle.width;
+                }
+            }
+        });
+        
+    } else {
+        // === AIRBORNE STATE: full gravity and collision resolution ===
+        player.velocityY += gravity;
+        player.y += player.velocityY;
+        
+        // Platform collisions
+        platforms.forEach(platform => {
+            if (inBossArea && platform.type !== 'ground') return;
+            
+            if (
+                player.y + player.height > platform.y &&
+                player.y < platform.y + platform.height &&
+                player.x + player.width - 5 > platform.x &&
+                player.x + 5 < platform.x + platform.width
+            ) {
+                // Landing on platform from above
+                if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y + 10) {
+                    player.y = Math.round(platform.y - player.height);
+                    player.velocityY = 0;
+                    player.jumping = false;
+                    player.doubleJumping = false;
+                    player.canDoubleJump = false;
+                    assets.vooo.isJumping = false;
+                    onGround = true;
+                }
+                // Hitting platform from below
+                else if (player.velocityY < 0 && player.y >= platform.y + platform.height) {
+                    player.y = platform.y + platform.height;
+                    player.velocityY = 0;
+                }
+                // Hitting platform from left
+                else if (player.velocityX > 0 && player.x + player.width - player.velocityX <= platform.x) {
+                    player.x = platform.x - player.width;
+                }
+                // Hitting platform from right
+                else if (player.velocityX < 0 && player.x - player.velocityX >= platform.x + platform.width) {
+                    player.x = platform.x + platform.width;
+                }
+            }
+        });
+        
+        // Obstacle collisions (only when airborne)
+        obstacles.forEach(obstacle => {
+            if (
+                player.y + player.height > obstacle.y + 5 &&
+                player.y < obstacle.y + obstacle.height - 5 &&
+                player.x + player.width - 5 > obstacle.x &&
+                player.x + 5 < obstacle.x + obstacle.width
+            ) {
+                if (obstacle.type === 'lava' && player.y + player.height > obstacle.y - 5) {
+                    player.isAlive = false;
+                    return;
+                }
+                
+                // Landing on obstacle from above
+                if (player.velocityY > 0 && player.y + player.height - player.velocityY <= obstacle.y) {
+                    player.y = Math.round(obstacle.y - player.height);
+                    player.velocityY = 0;
+                    player.jumping = false;
+                    assets.vooo.isJumping = false;
+                    onGround = true;
+                } else {
+                    // Push out (full directional)
+                    const fromLeft = player.x + player.width - obstacle.x;
+                    const fromRight = obstacle.x + obstacle.width - player.x;
+                    const fromTop = player.y + player.height - obstacle.y;
+                    const fromBottom = obstacle.y + obstacle.height - player.y;
+                    const min = Math.min(fromLeft, fromRight, fromTop, fromBottom);
+                    
+                    if (min === fromLeft) {
+                        player.x = obstacle.x - player.width;
+                    } else if (min === fromRight) {
+                        player.x = obstacle.x + obstacle.width;
+                    } else if (min === fromTop) {
+                        player.y = Math.round(obstacle.y - player.height);
+                        player.velocityY = 0;
+                        player.jumping = false;
+                        assets.vooo.isJumping = false;
+                        onGround = true;
+                    } else if (min === fromBottom) {
+                        player.y = obstacle.y + obstacle.height;
+                        player.velocityY = 0;
+                    }
+                }
+            }
+        });
+    }
+    
     player.onGround = onGround;
     
     // Check for collisions with obstacles
